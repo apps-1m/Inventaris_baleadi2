@@ -2,1665 +2,521 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Inventaris Desa Baleadi</title>
-    
-    <!-- PWA Basic Setup -->
-    <meta name="theme-color" content="#065f46">
-    <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Logo_of_the_Ministry_of_Villages%2C_Development_of_Disadvantaged_Regions_and_Transmigration_of_the_Republic_of_Indonesia.svg/512px-Logo_of_the_Ministry_of_Villages%2C_Development_of_Disadvantaged_Regions_and_Transmigration_of_the_Republic_of_Indonesia.svg.png">
-    
-    <!-- Libraries -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Inventaris Aset Desa</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        
-        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        /* Styling Cetak PDF Laporan Tabel & KIB Individu (Rapat & Hemat Kertas) */
+        /* Custom Print Styles */
         @media print {
-            @page { margin: 1cm; size: auto; }
-            
-            html, body { 
-                height: auto !important; display: block !important; position: static !important; 
-                overflow: visible !important; background-color: white !important; font-size: 9.5px !important; color: black !important; 
-            }
-            .no-print, #bottom-nav, aside, header, #public-portal { display: none !important; }
-            
-            #app-container, main { display: block !important; height: auto !important; position: static !important; overflow: visible !important; padding: 0 !important; margin: 0 !important; }
-            #data-section, #detail-section { display: block !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
-            
-            .print-header { display: block !important; text-align: center; margin-bottom: 10px; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #000; padding: 4px 6px; font-size: 9.5px; text-align: left; vertical-align: top; }
-            th { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; color: black !important; }
-            
-            .detail-card { break-inside: avoid; margin-bottom: 8px; border: 1px solid #000 !important; }
-            .detail-header { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; border-bottom: 1px solid #000 !important; padding: 5px 8px !important; font-size: 10px !important; }
-            .detail-row { break-inside: avoid; border-bottom: 1px solid #e5e7eb !important; }
-            .detail-label { background-color: #f9fafb !important; -webkit-print-color-adjust: exact; font-weight: bold; width: 35%; padding: 4px 6px !important; border-right: 1px solid #e5e7eb !important; text-align: left !important; }
-            .detail-value { width: 65%; padding: 4px 6px !important; text-align: left !important; }
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
         }
-        .print-header { display: none; }
-        
-        /* Toast Notification */
-        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-        .toast { padding: 12px 20px; border-radius: 8px; color: white; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); pointer-events: auto; display: flex; align-items: center; gap: 10px; animation: slideInRight 0.3s ease-out forwards; }
-        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
-
-        /* Modal Kustom */
-        .custom-modal { transition: opacity 0.3s ease; }
-        .custom-modal.hidden { opacity: 0; pointer-events: none; }
-        .custom-modal:not(.hidden) { opacity: 1; pointer-events: auto; }
     </style>
 </head>
-<body class="text-gray-800 h-screen flex flex-col md:flex-row overflow-hidden bg-gray-50">
+<body class="bg-gray-100 font-sans antialiased text-gray-800">
 
-    <div id="toast-container"></div>
-
-    <!-- Modal Konfirmasi Hapus Data -->
-    <div id="delete-modal" class="custom-modal fixed inset-0 bg-black/60 z-[100000] hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl transform transition-transform scale-95">
-            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-500 text-3xl mx-auto mb-4">
-                <i class="fas fa-exclamation-triangle"></i>
-            </div>
-            <h3 class="text-xl font-bold text-center text-gray-900 mb-2">Hapus Aset?</h3>
-            <p class="text-center text-gray-500 text-sm mb-6">Tindakan ini akan menghapus data secara permanen dari sistem.</p>
-            <div class="flex gap-3">
-                <button onclick="closeDeleteModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 rounded-xl transition-colors">Batal</button>
-                <button id="confirm-delete-btn" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-3 rounded-xl shadow-lg shadow-red-200 transition-colors">Ya, Hapus!</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Lihat Foto (View Photo) -->
-    <div id="photo-modal" class="custom-modal fixed inset-0 bg-black/90 z-[100001] hidden flex items-center justify-center p-4 backdrop-blur-md">
-        <div class="bg-white/10 rounded-2xl max-w-3xl w-full overflow-hidden shadow-2xl relative animate-fade-in border border-white/20">
-            <div class="p-4 bg-black/50 text-white flex justify-between items-center backdrop-blur-md absolute top-0 w-full z-10">
-                <h3 class="font-bold text-lg drop-shadow-md"><i class="fas fa-image mr-2"></i> Pratinjau Dokumen</h3>
-                <button onclick="closePhotoModal()" class="text-white hover:text-red-400 p-2 text-xl drop-shadow-md transition-colors"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="p-0 flex items-center justify-center bg-black min-h-[50vh] relative pt-16 pb-4">
-                <img id="modal-img-preview" src="" alt="Pratinjau Aset" class="max-h-[85vh] max-w-full object-contain">
-                <iframe id="modal-pdf-preview" src="" class="hidden w-full h-[80vh] border-0"></iframe>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Laporan Publik (Tanpa Cetak) -->
-    <div id="public-detail-modal" class="custom-modal fixed inset-0 bg-black/60 z-[100000] hidden flex items-center justify-center p-4 md:p-8 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fade-in transform transition-transform">
-            <div class="bg-emerald-700 p-4 md:p-5 flex justify-between items-center shrink-0">
-                <h3 class="text-white font-bold text-lg flex items-center gap-2"><i class="fas fa-info-circle"></i> Informasi Detail Aset</h3>
-                <button onclick="closePublicDetail()" class="w-8 h-8 flex items-center justify-center bg-emerald-800 hover:bg-emerald-900 text-white rounded-full transition-colors"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="p-4 md:p-6 overflow-y-auto flex-1 bg-gray-50">
-                <div class="text-center mb-6 border-b-2 border-emerald-600/20 pb-4">
-                    <h2 class="text-sm md:text-base font-bold uppercase text-gray-500 tracking-widest">Pemerintah Desa Baleadi</h2>
-                    <h1 id="public-det-title" class="text-lg md:text-xl font-black uppercase mt-1 text-gray-800">Kartu Inventaris Barang</h1>
-                </div>
-                <div id="public-detail-content" class="space-y-4">
-                    <!-- Konten generate otomatis -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Halaman / Modal Login Admin -->
-    <div id="login-section" class="custom-modal fixed inset-0 bg-black/60 z-[110000] hidden flex items-center justify-center p-4 backdrop-blur-md">
-        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 animate-fade-in relative overflow-hidden">
-            <button onclick="closeLogin()" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full transition-colors"><i class="fas fa-times"></i></button>
-            
-            <div class="text-center mb-8 pt-4">
-                <div class="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-emerald-100">
-                    <i class="fas fa-user-shield text-4xl text-emerald-600"></i>
-                </div>
-                <h1 class="text-2xl font-extrabold text-gray-800 tracking-tight">Portal Admin</h1>
-                <p class="text-sm text-gray-500 mt-2 font-medium">Masuk untuk mengelola data Inventaris KIB.</p>
-            </div>
-            
-            <div class="mb-6">
-                <label class="block text-sm font-bold text-gray-700 mb-2">Kata Sandi Administrator</label>
-                <div class="relative">
-                    <span class="absolute left-4 top-3.5 text-gray-400"><i class="fas fa-lock"></i></span>
-                    <input type="password" id="pin-input" class="w-full pl-11 p-3.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all font-medium" placeholder="Masukkan sandi..." onkeyup="if(event.key === 'Enter') checkLogin()">
-                </div>
-            </div>
-            
-            <button onclick="checkLogin()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-200 transition-all active:scale-95 flex items-center justify-center gap-2">
-                <i class="fas fa-sign-in-alt"></i> Masuk Sistem
-            </button>
-        </div>
-    </div>
-
-    <!-- ==================== PORTAL PUBLIK (LANDING PAGE) ==================== -->
-    <div id="public-portal" class="w-full h-full flex flex-col overflow-y-auto z-10 absolute inset-0 bg-gray-50">
-        <!-- Header Publik -->
-        <header class="bg-gradient-to-r from-emerald-800 to-emerald-600 pt-8 pb-12 px-4 shadow-lg relative shrink-0">
-            <!-- Pola background -->
-            <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none"></div>
-            
-            <div class="max-w-5xl mx-auto w-full relative z-10">
-                <div class="flex justify-between items-start mb-8">
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md">
-                            <i class="fas fa-leaf text-2xl text-emerald-600"></i>
-                        </div>
+    <!-- ========================================== -->
+    <!-- PORTAL PUBLIK (HALAMAN UTAMA / LANDING PAGE)-->
+    <!-- ========================================== -->
+    <div id="public-portal" class="min-h-screen flex flex-col">
+        <!-- Header & Search Box (Warna Hijau) -->
+        <div class="bg-gradient-to-r from-teal-600 to-green-600 pt-6 pb-12 px-4 shadow-lg rounded-b-3xl">
+            <div class="max-w-4xl mx-auto">
+                <div class="flex justify-between items-center mb-8">
+                    <div class="flex items-center text-white">
+                        <i class="fas fa-landmark text-3xl mr-3"></i>
                         <div>
-                            <h1 class="text-white font-bold text-xl md:text-2xl tracking-wide leading-tight">Desa Baleadi</h1>
-                            <p class="text-emerald-100 text-xs md:text-sm font-medium uppercase tracking-wider">Portal Transparansi Aset</p>
+                            <h1 class="text-2xl font-bold">Portal Informasi Aset</h1>
+                            <p class="text-sm opacity-90">Pemerintah Desa</p>
                         </div>
                     </div>
                     <!-- Tombol Login Admin -->
-                    <button onclick="openLogin()" class="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all">
-                        <i class="fas fa-lock"></i> <span class="hidden md:inline">Login Admin</span>
+                    <button onclick="openLoginModal()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-full backdrop-blur-sm transition font-medium text-sm">
+                        <i class="fas fa-lock mr-2"></i>Admin
                     </button>
                 </div>
-                
-                <!-- Area Pencarian Tengah -->
-                <div class="text-center mt-4 md:mt-10 mb-2">
-                    <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-3 text-shadow-md">Cari Data Inventaris Desa</h2>
-                    <p class="text-emerald-100 md:text-lg max-w-2xl mx-auto mb-8 font-medium">Temukan informasi aset, status lahan bengkok, dan perlengkapan inventaris desa secara terbuka dan real-time.</p>
-                    
-                    <div class="max-w-3xl mx-auto relative group">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i class="fas fa-search text-gray-400 group-focus-within:text-emerald-500 text-xl transition-colors"></i>
-                        </div>
-                        <input type="text" id="public-search" onkeyup="searchPublicData()" class="block w-full pl-12 pr-4 py-4 md:py-5 border-0 rounded-2xl text-gray-900 bg-white shadow-xl focus:ring-4 focus:ring-emerald-300 focus:outline-none md:text-lg font-medium placeholder-gray-400 transition-all" placeholder="Ketik nama pengguna (penggarap), nama lahan, atau jenis aset...">
+
+                <div class="bg-white p-2 rounded-full shadow-lg flex items-center">
+                    <i class="fas fa-search text-gray-400 ml-4"></i>
+                    <input type="text" id="publicSearchInput" onkeyup="searchPublicData()" placeholder="Cari Nama Pengguna, Nama Tanah, atau Lokasi..." class="flex-1 bg-transparent outline-none px-4 py-3 text-gray-700">
+                    <button class="bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-full font-medium transition">
+                        Cari
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hasil Pencarian Publik (Di bawah Header) -->
+        <div class="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
+            <div class="mb-4 text-gray-600 font-medium" id="publicSearchStatus">Menampilkan data aset terbuka...</div>
+            <div id="publicDataContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Data publik akan dirender di sini via JS -->
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- DASHBOARD ADMIN (PRIVATE)                  -->
+    <!-- ========================================== -->
+    <div id="admin-dashboard" class="hidden min-h-screen bg-gray-100">
+        <!-- Navbar Admin -->
+        <nav class="bg-blue-800 text-white shadow-md">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center">
+                        <i class="fas fa-shield-alt text-2xl mr-3 text-blue-300"></i>
+                        <span class="font-bold text-xl">Sistem Manajemen KIB</span>
+                    </div>
+                    <button onclick="logoutAdmin()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-medium transition">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Keluar
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            
+            <!-- Menu Utama Admin (Grid) -->
+            <div id="admin-menu-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- Card Menu Input -->
+                <div onclick="showAdminPage('page-input')" class="bg-white rounded-xl shadow-md p-6 cursor-pointer hover:shadow-lg hover:border-blue-500 border-2 border-transparent transition-all group flex items-center">
+                    <div class="bg-blue-100 text-blue-600 p-4 rounded-full mr-5 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-plus-circle text-3xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800">Input Aset KIB</h2>
+                        <p class="text-gray-500 text-sm mt-1">Rekam data inventaris baru ke sistem</p>
+                    </div>
+                </div>
+
+                <!-- Card Menu Laporan -->
+                <div onclick="showAdminPage('page-laporan')" class="bg-white rounded-xl shadow-md p-6 cursor-pointer hover:shadow-lg hover:green-blue-500 border-2 border-transparent transition-all group flex items-center">
+                    <div class="bg-green-100 text-green-600 p-4 rounded-full mr-5 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-file-alt text-3xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800">Laporan & Cetak</h2>
+                        <p class="text-gray-500 text-sm mt-1">Kelola data, lihat tabel, dan cetak KIB</p>
                     </div>
                 </div>
             </div>
-        </header>
 
-        <!-- Area Hasil Pencarian Publik (Di bawah Header) -->
-        <main class="flex-1 w-full max-w-5xl mx-auto px-4 pb-20 pt-6">
-            <div id="public-results-container" class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden min-h-[400px] flex flex-col relative z-20">
-                <div class="bg-gray-50 border-b border-gray-200 p-4 md:p-5 flex justify-between items-center">
-                    <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-list-ul text-emerald-600"></i> Hasil Pencarian Data KIB</h3>
-                    <span id="public-count" class="bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200">0 Data</span>
+            <!-- HALAMAN: INPUT ASET -->
+            <div id="page-input" class="hidden bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center mb-6 border-b pb-4">
+                    <button onclick="showAdminPage('menu')" class="text-gray-500 hover:text-blue-600 mr-4">
+                        <i class="fas fa-arrow-left text-xl"></i>
+                    </button>
+                    <h2 class="text-2xl font-bold text-gray-800">Formulir Input Aset KIB A (Tanah)</h2>
+                </div>
+                <!-- Form Input Singkat (Contoh) -->
+                <form id="formKIB" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Hak Pengguna</label>
+                        <input type="text" id="input_pengguna" class="w-full border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Tanah / Aset</label>
+                        <input type="text" id="input_tanah" class="w-full border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Lokasi / Alamat</label>
+                        <textarea id="input_alamat" rows="2" class="w-full border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500" required></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tahun Pengadaan</label>
+                        <input type="number" id="input_tahun" class="w-full border border-gray-300 rounded p-2" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kondisi</label>
+                        <select id="input_kondisi" class="w-full border border-gray-300 rounded p-2">
+                            <option value="Baik">Baik</option>
+                            <option value="Kurang Baik">Kurang Baik</option>
+                            <option value="Rusak Berat">Rusak Berat</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2 flex justify-end mt-4">
+                        <button type="button" onclick="simpanData()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium shadow">
+                            <i class="fas fa-save mr-2"></i>Simpan Data
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- HALAMAN: LAPORAN & CETAK -->
+            <div id="page-laporan" class="hidden bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="p-6 border-b flex items-center justify-between bg-gray-50">
+                    <div class="flex items-center">
+                        <button onclick="showAdminPage('menu')" class="text-gray-500 hover:text-blue-600 mr-4">
+                            <i class="fas fa-arrow-left text-xl"></i>
+                        </button>
+                        <h2 class="text-2xl font-bold text-gray-800">Buku Inventaris (KIB A)</h2>
+                    </div>
+                    <!-- Pencarian Data Admin -->
+                    <div class="relative">
+                        <input type="text" id="adminSearchInput" onkeyup="renderAdminTable()" placeholder="Cari data..." class="border border-gray-300 rounded-full pl-10 pr-4 py-2 focus:outline-none focus:border-blue-500">
+                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    </div>
                 </div>
                 
-                <div class="flex-1 overflow-x-auto p-0">
-                    <!-- Status Loading/Error -->
-                    <div id="public-loading" class="flex flex-col items-center justify-center h-64 text-gray-500">
-                        <i class="fas fa-spinner fa-spin text-4xl mb-3 text-emerald-500"></i>
-                        <p class="font-bold">Menghubungkan ke Database...</p>
-                    </div>
-                    
-                    <div id="public-empty" class="hidden flex flex-col items-center justify-center h-64 text-gray-400">
-                        <i class="fas fa-box-open text-5xl mb-3 text-gray-300"></i>
-                        <p class="font-medium">Tidak ada aset yang cocok dengan pencarian Anda.</p>
-                    </div>
-
-                    <!-- Tabel Hasil -->
-                    <table id="public-table-container" class="hidden w-full text-left text-sm text-gray-600 whitespace-nowrap md:whitespace-normal">
-                        <thead class="bg-gray-100/50 border-b border-gray-200 text-gray-700 uppercase text-[10px] tracking-wider font-bold">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-100">
                             <tr>
-                                <th class="p-4 w-12 text-center">No</th>
-                                <th class="p-4">Identitas Aset (Nama Pengguna & Lahan)</th>
-                                <th class="p-4">Jenis KIB</th>
-                                <th class="p-4 hidden md:table-cell">Kondisi / Status</th>
-                                <th class="p-4 hidden md:table-cell">Alamat / Lokasi</th>
-                                <th class="p-4 text-center">Detail</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">No</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Nama Aset / Identitas</th>
+                                <!-- KOLOM BARU: LOKASI / ALAMAT -->
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Lokasi / Alamat</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Tahun</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Kondisi</th>
+                                <th class="px-6 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody id="public-table-body" class="divide-y divide-gray-100">
-                            <!-- Data Publik di-render di sini -->
+                        <tbody id="adminTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Baris tabel di-generate oleh JS -->
                         </tbody>
                     </table>
                 </div>
             </div>
-        </main>
-        
-        <footer class="bg-gray-900 text-gray-400 py-6 text-center text-xs mt-auto shrink-0">
-            <p>&copy; 2026 Pemerintah Desa Baleadi. Sistem Inventaris Aset Terbuka.</p>
-        </footer>
+
+        </div>
     </div>
 
 
-    <!-- ==================== PORTAL ADMIN (PRIVATE) ==================== -->
-    <div id="app-container" class="hidden w-full h-full flex flex-col md:flex-row relative z-20 bg-gray-50">
-        
-        <!-- Sidebar (Desktop Saja) -->
-        <aside class="hidden md:flex w-72 bg-emerald-900 text-emerald-50 flex-col shadow-2xl z-30 relative shrink-0">
-            <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none"></div>
-            <div class="p-6 border-b border-emerald-700/50 flex items-center gap-4 relative z-10">
-                <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md shrink-0">
-                    <i class="fas fa-leaf text-2xl text-emerald-600"></i>
+    <!-- ========================================== -->
+    <!-- MODAL POP-UPS                              -->
+    <!-- ========================================== -->
+
+    <!-- Modal Login -->
+    <div id="loginModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm mx-4 transform transition-all">
+            <div class="text-center mb-6">
+                <div class="bg-blue-100 text-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-user-shield text-2xl"></i>
                 </div>
-                <div>
-                    <h2 class="font-bold text-xl leading-tight text-white tracking-wide">Desa Baleadi</h2>
-                    <p class="text-xs text-emerald-300 font-medium tracking-wider uppercase">Panel Admin KIB</p>
+                <h3 class="text-2xl font-bold text-gray-800">Login Admin</h3>
+                <p class="text-gray-500 text-sm">Masuk untuk mengelola inventaris</p>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kata Sandi</label>
+                <div class="relative">
+                    <i class="fas fa-lock absolute left-3 top-3 text-gray-400"></i>
+                    <input type="password" id="passwordInput" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Masukkan password (789)">
                 </div>
             </div>
-            <nav class="flex-1 p-5 space-y-2 relative z-10 overflow-y-auto">
-                <button onclick="switchTab('dashboard')" id="nav-desktop-dashboard" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-emerald-700/50 text-white font-semibold transition-all text-left shadow-inner">
-                    <i class="fas fa-chart-pie w-6 text-center text-emerald-300"></i> Dashboard Utama
-                </button>
-                <button onclick="switchTab('inventaris-menu')" id="nav-desktop-inventaris-menu" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-emerald-800 transition-all text-left text-emerald-100 font-medium">
-                    <i class="fas fa-plus-circle w-6 text-center"></i> Input Aset KIB
-                </button>
-                <button onclick="switchTab('laporan-menu')" id="nav-desktop-laporan-menu" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-emerald-800 transition-all text-left text-emerald-100 font-medium">
-                    <i class="fas fa-file-alt w-6 text-center"></i> Laporan & Cetak
-                </button>
-            </nav>
-            <div class="p-5 border-t border-emerald-700/50 relative z-10 shrink-0">
-                <button onclick="logout()" class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold transition-colors shadow-md">
-                    <i class="fas fa-sign-out-alt"></i> Keluar
-                </button>
-            </div>
-        </aside>
-
-        <!-- Area Konten Utama Admin -->
-        <main class="flex-1 flex flex-col h-full relative overflow-y-auto pb-36 md:pb-8">
-            
-            <!-- Header Mobile Admin Saja -->
-            <header class="md:hidden bg-emerald-800 text-white p-4 flex justify-between items-center shadow-md sticky top-0 z-10 no-print shrink-0">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                        <i class="fas fa-shield-alt text-emerald-600 text-sm"></i>
-                    </div>
-                    <h2 class="font-bold tracking-wide text-sm">Panel Admin Baleadi</h2>
-                </div>
-                <button onclick="logout()" class="text-emerald-100 hover:text-white p-2">
-                    <i class="fas fa-sign-out-alt text-lg"></i>
-                </button>
-            </header>
-
-            <div class="p-4 md:p-8 w-full max-w-7xl mx-auto flex-1">
-                
-                <!-- DASHBOARD SECTION -->
-                <div id="dashboard-section" class="section-container animate-fade-in">
-                    <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">Ringkasan Inventaris</h1>
-                            <p class="text-gray-500 font-medium mt-1">Gambaran umum aset dan properti Desa Baleadi (Admin)</p>
-                        </div>
-                        <button onclick="backToPublic()" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-colors flex items-center gap-2">
-                            <i class="fas fa-globe"></i> Lihat Portal Publik
-                        </button>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 mb-8">
-                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-5 border-l-4 border-l-emerald-500 hover:shadow-md transition-shadow relative overflow-hidden">
-                            <i class="fas fa-map text-8xl text-emerald-50 absolute -right-4 -bottom-4 z-0"></i>
-                            <div class="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600 text-2xl z-10 shadow-inner"><i class="fas fa-map-marked-alt"></i></div>
-                            <div class="z-10">
-                                <p class="text-sm text-gray-500 font-bold uppercase tracking-wider mb-1">KIB A - Tanah</p>
-                                <p class="text-3xl font-black text-gray-800" id="stat-lahan">0</p>
-                            </div>
-                        </div>
-                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-5 border-l-4 border-l-blue-500 hover:shadow-md transition-shadow relative overflow-hidden">
-                            <i class="fas fa-building text-8xl text-blue-50 absolute -right-4 -bottom-4 z-0"></i>
-                            <div class="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 text-2xl z-10 shadow-inner"><i class="fas fa-building"></i></div>
-                            <div class="z-10">
-                                <p class="text-sm text-gray-500 font-bold uppercase tracking-wider mb-1">KIB C - Bangunan</p>
-                                <p class="text-3xl font-black text-gray-800" id="stat-bangunan">0</p>
-                            </div>
-                        </div>
-                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-5 border-l-4 border-l-amber-500 hover:shadow-md transition-shadow relative overflow-hidden">
-                            <i class="fas fa-cogs text-8xl text-amber-50 absolute -right-4 -bottom-4 z-0"></i>
-                            <div class="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600 text-2xl z-10 shadow-inner"><i class="fas fa-tractor"></i></div>
-                            <div class="z-10">
-                                <p class="text-sm text-gray-500 font-bold uppercase tracking-wider mb-1">KIB B - Peralatan</p>
-                                <p class="text-3xl font-black text-gray-800" id="stat-peralatan">0</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- MENU INVENTARIS SECTION (KIB Pilihan) -->
-                <div id="inventaris-menu-section" class="section-container hidden animate-fade-in">
-                    <div class="mb-8 border-l-4 border-emerald-500 pl-4">
-                        <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">Input Aset Baru</h1>
-                        <p class="text-gray-500 font-medium mt-1">Pilih format KIB yang sesuai dengan aset yang akan di-input ke sistem.</p>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <button onclick="openForm('tanah')" class="bg-white hover:bg-emerald-50 group border border-gray-200 rounded-2xl p-8 flex flex-col items-center text-center transition-all shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-emerald-300">
-                            <div class="w-24 h-24 bg-emerald-100 group-hover:bg-emerald-200 text-emerald-600 rounded-full flex items-center justify-center text-4xl mb-5 transition-colors shadow-inner">
-                                <i class="fas fa-map-marked-alt"></i>
-                            </div>
-                            <h3 class="font-black text-xl text-gray-800 mb-2">Inventarisasi Tanah</h3>
-                            <span class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold mb-3 border border-emerald-200">Format KIB A</span>
-                            <p class="text-sm text-gray-500 font-medium">Tanah kas desa, bengkok, makam, lapangan, dll.</p>
-                        </button>
-
-                        <button onclick="openForm('bangunan')" class="bg-white hover:bg-blue-50 group border border-gray-200 rounded-2xl p-8 flex flex-col items-center text-center transition-all shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-blue-300">
-                            <div class="w-24 h-24 bg-blue-100 group-hover:bg-blue-200 text-blue-600 rounded-full flex items-center justify-center text-4xl mb-5 transition-colors shadow-inner">
-                                <i class="fas fa-building"></i>
-                            </div>
-                            <h3 class="font-black text-xl text-gray-800 mb-2">Gedung / Bangunan</h3>
-                            <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold mb-3 border border-blue-200">Format KIB C</span>
-                            <p class="text-sm text-gray-500 font-medium">Balai desa, polindes, sekolah, gor, jembatan, dll.</p>
-                        </button>
-
-                        <button onclick="openForm('peralatan')" class="bg-white hover:bg-amber-50 group border border-gray-200 rounded-2xl p-8 flex flex-col items-center text-center transition-all shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-amber-300">
-                            <div class="w-24 h-24 bg-amber-100 group-hover:bg-amber-200 text-amber-600 rounded-full flex items-center justify-center text-4xl mb-5 transition-colors shadow-inner">
-                                <i class="fas fa-tractor"></i>
-                            </div>
-                            <h3 class="font-black text-xl text-gray-800 mb-2">Peralatan & Mesin</h3>
-                            <span class="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold mb-3 border border-amber-200">Format KIB B</span>
-                            <p class="text-sm text-gray-500 font-medium">Traktor, komputer, mebelair, kendaraan dinas, dll.</p>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- FORM KIB A: TANAH -->
-                <div id="form-tanah-section" class="section-container hidden animate-fade-in form-section">
-                    <div class="flex items-center gap-4 mb-6">
-                        <button onclick="switchTab('inventaris-menu')" class="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 shadow-sm transition-colors"><i class="fas fa-arrow-left text-lg"></i></button>
-                        <div>
-                            <h1 id="title-form-tanah" class="text-3xl font-extrabold text-gray-800 tracking-tight">Formulir KIB A (Tanah)</h1>
-                            <p class="text-sm text-gray-500 font-medium mt-1">Catat aset berupa lahan kosong, bengkok, atau bidang tanah.</p>
-                        </div>
-                    </div>
-                    
-                    <form onsubmit="submitData(event, 'Lahan')" id="form-tanah" class="space-y-6">
-                        <input type="hidden" id="t-id">
-                        
-                        <!-- 1. Identitas Aset -->
-                        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden relative z-10 hover:shadow-md hover:border-emerald-300 transition-all duration-300">
-                            <div class="bg-emerald-50/80 border-b border-emerald-100 px-5 py-3.5">
-                                <h3 class="text-sm md:text-base font-bold text-emerald-800 flex items-center gap-2 uppercase tracking-wide"><i class="fas fa-id-card text-emerald-600 text-lg"></i> 1. Identitas Aset</h3>
-                            </div>
-                            <div class="p-5 space-y-5">
-                                <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Nama Hak Pengguna <span class="text-red-500">*</span></label>
-                                    <input type="text" id="t-hakpengguna" required class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all font-medium" placeholder="Pemerintah Desa Baleadi">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Nama Tanah <span class="text-red-500">*</span></label>
-                                    <input type="text" id="t-nama" required class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all font-medium" placeholder="Contoh: Tanah Lapangan">
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div>
-                                        <label class="block text-sm font-bold text-gray-700 mb-1.5">Jenis Tanah <span class="text-red-500">*</span></label>
-                                        <select id="t-jenis" required class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all font-medium cursor-pointer">
-                                            <option value="Tanah Kas Desa (TKD)">Tanah Kas Desa (TKD)</option>
-                                            <option value="Tanah Bengkok">Tanah Bengkok</option>
-                                            <option value="Fasilitas Umum">Fasilitas Umum</option>
-                                            <option value="Tanah Makam">Tanah Makam</option>
-                                            <option value="Lainnya">Lainnya</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-bold text-gray-700 mb-1.5">Alamat / Lokasi <span class="text-red-500">*</span></label>
-                                        <input type="text" id="t-alamat" required class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all font-medium" placeholder="Dusun / RT / RW / Persil">
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2 border-t border-gray-100">
-                                    <div>
-                                        <label class="block text-sm font-bold text-gray-700 mb-1.5">Nomor Kode Barang</label>
-                                        <input type="text" id="t-kode" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all font-medium" placeholder="01.01.11.xx">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-bold text-gray-700 mb-1.5">Nomor Register</label>
-                                        <input type="text" id="t-register" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all font-medium" placeholder="0001">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 2. Spesifikasi Fisik -->
-                        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden relative z-10 hover:shadow-md hover:border-emerald-300 transition-all duration-300">
-                            <div class="bg-emerald-50/80 border-b border-emerald-100 px-5 py-3.5">
-                                <h3 class="text-sm md:text-base font-bold text-emerald-800 flex items-center gap-2 uppercase tracking-wide"><i class="fas fa-layer-group text-emerald-600 text-lg"></i> 2. Spesifikasi Fisik</h3>
-                            </div>
-                            <div class="p-5 space-y-5">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div class="p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                                        <label class="block text-sm font-bold text-gray-700 mb-1.5">Luas Tanah Awal (m²) <span class="text-red-500">*</span></label>
-                                        <input type="number" id="t-luas" required class="w-full p-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none mb-3 font-medium" placeholder="Berdasarkan SPPT/Dokumen Awal">
-                                        <label class="block text-xs font-bold text-gray-600 mb-1">Bukti SPPT / Pajak (Opsional)</label>
-                                        <div class="border-2 border-dashed border-gray-300 bg-white rounded-xl p-3 text-center relative hover:bg-emerald-50 hover:border-emerald-300 transition h-24 flex items-center justify-center">
-                                            <input type="file" accept="image/*,.pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="previewImage(this, 't-preview-sppt', 't-placeholder-sppt', 't-base64-sppt')">
-                                            <div id="t-placeholder-sppt" class="text-gray-400 pointer-events-none"><i class="fas fa-file-invoice text-xl mb-1 text-emerald-500"></i><p class="text-[10px] font-bold">Upload SPPT</p></div>
-                                            <img id="t-preview-sppt" class="hidden max-h-20 mx-auto rounded object-contain" src="" alt="SPPT">
-                                            <input type="hidden" id="t-base64-sppt">
-                                        </div>
-                                    </div>
-                                    <div class="p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                                        <label class="block text-sm font-bold text-gray-700 mb-1.5">Luas Tanah Sekarang (m²)</label>
-                                        <input type="number" id="t-luassekarang" class="w-full p-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none mb-3 font-medium" placeholder="Hasil ukur ulang">
-                                        <label class="block text-xs font-bold text-gray-600 mb-1">Bukti Hasil Pengukuran (Opsional)</label>
-                                        <div class="border-2 border-dashed border-gray-300 bg-white rounded-xl p-3 text-center relative hover:bg-emerald-50 hover:border-emerald-300 transition h-24 flex items-center justify-center">
-                                            <input type="file" accept="image/*,.pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="previewImage(this, 't-preview-ukur', 't-placeholder-ukur', 't-base64-ukur')">
-                                            <div id="t-placeholder-ukur" class="text-gray-400 pointer-events-none"><i class="fas fa-ruler-combined text-xl mb-1 text-emerald-500"></i><p class="text-[10px] font-bold">Upload Ukur</p></div>
-                                            <img id="t-preview-ukur" class="hidden max-h-20 mx-auto rounded object-contain" src="" alt="Ukur">
-                                            <input type="hidden" id="t-base64-ukur">
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="pt-4 border-t border-gray-100">
-                                    <h4 class="text-sm font-bold text-gray-800 mb-3">Batas-Batas Lokasi</h4>
-                                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                        <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div class="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
-                                                <span class="bg-gray-200 w-10 h-full flex items-center justify-center font-bold text-gray-600 text-sm border-r border-gray-300">U</span>
-                                                <input type="text" id="t-batas-u" class="w-full p-2.5 bg-transparent outline-none text-sm font-medium" placeholder="Batas Utara">
-                                            </div>
-                                            <div class="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
-                                                <span class="bg-gray-200 w-10 h-full flex items-center justify-center font-bold text-gray-600 text-sm border-r border-gray-300">S</span>
-                                                <input type="text" id="t-batas-s" class="w-full p-2.5 bg-transparent outline-none text-sm font-medium" placeholder="Batas Selatan">
-                                            </div>
-                                            <div class="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
-                                                <span class="bg-gray-200 w-10 h-full flex items-center justify-center font-bold text-gray-600 text-sm border-r border-gray-300">T</span>
-                                                <input type="text" id="t-batas-t" class="w-full p-2.5 bg-transparent outline-none text-sm font-medium" placeholder="Batas Timur">
-                                            </div>
-                                            <div class="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
-                                                <span class="bg-gray-200 w-10 h-full flex items-center justify-center font-bold text-gray-600 text-sm border-r border-gray-300">B</span>
-                                                <input type="text" id="t-batas-b" class="w-full p-2.5 bg-transparent outline-none text-sm font-medium" placeholder="Batas Barat">
-                                            </div>
-                                        </div>
-                                        <div class="lg:col-span-1">
-                                            <div class="border-2 border-dashed border-gray-300 bg-gray-50 rounded-xl p-3 text-center relative hover:bg-emerald-50 hover:border-emerald-300 transition h-full min-h-[90px] flex items-center justify-center">
-                                                <input type="file" accept="image/*,.pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="previewImage(this, 't-preview-batas', 't-placeholder-batas', 't-base64-batas')">
-                                                <div id="t-placeholder-batas" class="text-gray-400 pointer-events-none flex flex-col items-center justify-center">
-                                                    <i class="fas fa-map-marked-alt text-2xl mb-1 text-emerald-500"></i>
-                                                    <p class="text-[11px] font-bold mt-1">Upload Bukti Batas</p>
-                                                </div>
-                                                <img id="t-preview-batas" class="hidden max-h-20 mx-auto rounded object-contain shadow-sm" src="">
-                                                <input type="hidden" id="t-base64-batas">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 3. Legalitas -->
-                        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden relative z-10 hover:shadow-md hover:border-emerald-300 transition-all duration-300">
-                            <div class="bg-emerald-50/80 border-b border-emerald-100 px-5 py-3.5">
-                                <h3 class="text-sm md:text-base font-bold text-emerald-800 flex items-center gap-2 uppercase tracking-wide"><i class="fas fa-balance-scale text-emerald-600 text-lg"></i> 3. Legalitas (Sertifikat)</h3>
-                            </div>
-                            <div class="p-5">
-                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                    <div class="lg:col-span-2 space-y-5">
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Status Hak <span class="text-red-500">*</span></label>
-                                            <select id="t-status" required class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all font-medium cursor-pointer">
-                                                <option value="Hak Milik">Hak Milik (SHM)</option>
-                                                <option value="Hak Guna Bangunan">Hak Guna Bangunan (HGB)</option>
-                                                <option value="Hak Pakai">Hak Pakai</option>
-                                                <option value="Girik/Letter C">Girik / Letter C</option>
-                                                <option value="Tanah Negara">Tanah Negara</option>
-                                            </select>
-                                        </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                            <div>
-                                                <label class="block text-sm font-bold text-gray-700 mb-1.5">Nomor Sertifikat/Girik</label>
-                                                <input type="text" id="t-nosertifikat" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all font-medium" placeholder="Nomor dokumen...">
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-bold text-gray-700 mb-1.5">Tanggal Penerbitan</label>
-                                                <input type="date" id="t-tglsertifikat" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all font-medium">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="lg:col-span-1 flex flex-col">
-                                        <label class="block text-sm font-bold text-gray-700 mb-1.5">Upload Bukti Sertifikat</label>
-                                        <div class="flex-1 border-2 border-dashed border-gray-300 bg-gray-50 rounded-xl p-3 text-center relative hover:bg-emerald-50 hover:border-emerald-300 transition min-h-[140px] flex items-center justify-center">
-                                            <input type="file" accept="image/*,.pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="previewImage(this, 't-preview-sertifikat', 't-placeholder-sertifikat', 't-base64-sertifikat')">
-                                            <div id="t-placeholder-sertifikat" class="text-gray-400 pointer-events-none flex flex-col items-center justify-center">
-                                                <i class="fas fa-file-contract text-3xl mb-2 text-emerald-500"></i>
-                                                <p class="text-[11px] font-bold mt-1">Upload Sertifikat / Letter C</p>
-                                            </div>
-                                            <img id="t-preview-sertifikat" class="hidden max-h-28 mx-auto rounded object-contain shadow-sm" src="">
-                                            <input type="hidden" id="t-base64-sertifikat">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 4. Administrasi -->
-                        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden relative z-10 hover:shadow-md hover:border-emerald-300 transition-all duration-300">
-                            <div class="bg-emerald-50/80 border-b border-emerald-100 px-5 py-3.5">
-                                <h3 class="text-sm md:text-base font-bold text-emerald-800 flex items-center gap-2 uppercase tracking-wide"><i class="fas fa-folder-open text-emerald-600 text-lg"></i> 4. Administrasi</h3>
-                            </div>
-                            <div class="p-5">
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                                    <div>
-                                        <label class="block text-sm font-bold text-gray-700 mb-1.5">Asal Usul <span class="text-red-500">*</span></label>
-                                        <select id="t-asal" required class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all font-medium cursor-pointer">
-                                            <option value="Pembelian">Pembelian</option>
-                                            <option value="Hibah">Hibah</option>
-                                            <option value="Tanah Kas Desa">Tanah Kas Desa (Asli)</option>
-                                            <option value="Sumbangan">Sumbangan</option>
-                                            <option value="Lainnya">Lainnya</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-bold text-gray-700 mb-1.5">Tahun Perolehan</label>
-                                        <input type="number" id="t-tahun" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all font-medium" placeholder="YYYY">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-bold text-gray-700 mb-1.5">Harga Perolehan (Rp)</label>
-                                        <div class="relative">
-                                            <span class="absolute left-4 top-3.5 font-bold text-gray-500">Rp</span>
-                                            <input type="number" id="t-harga" class="w-full pl-10 p-3.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all font-medium" placeholder="0">
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-bold text-gray-700 mb-1.5">Penggunaan</label>
-                                        <input type="text" id="t-penggunaan" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all font-medium" placeholder="Pertanian, Lapangan, dll...">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 5. Lokasi & Media -->
-                        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden relative z-10 hover:shadow-md hover:border-emerald-300 transition-all duration-300">
-                            <div class="bg-emerald-50/80 border-b border-emerald-100 px-5 py-3.5">
-                                <h3 class="text-sm md:text-base font-bold text-emerald-800 flex items-center gap-2 uppercase tracking-wide"><i class="fas fa-map-marker-alt text-emerald-600 text-lg"></i> 5. Titik Lokasi & Visual</h3>
-                            </div>
-                            <div class="p-5">
-                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                    <div class="lg:col-span-1 space-y-4">
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Titik Koordinat GPS</label>
-                                            <div class="relative mb-2">
-                                                <input type="text" id="t-koordinat" readonly class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl pr-28 outline-none text-gray-600 font-medium" placeholder="Ketuk dapatkan GPS...">
-                                                <div class="absolute right-2 top-2 flex gap-1">
-                                                    <a id="t-map-link" href="#" target="_blank" class="hidden p-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors shadow-sm" title="Buka di Google Maps"><i class="fas fa-external-link-alt"></i></a>
-                                                    <button type="button" onclick="copyKoordinat('t-koordinat')" class="p-2 bg-white text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-50 transition-colors shadow-sm" title="Salin Koordinat"><i class="fas fa-copy"></i></button>
-                                                </div>
-                                            </div>
-                                            <button type="button" onclick="getLocation('t-koordinat')" class="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 rounded-xl hover:bg-emerald-100 flex items-center justify-center gap-2 font-bold transition-colors">
-                                                <i class="fas fa-satellite-dish"></i> Deteksi Lokasi Sekarang
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="lg:col-span-2 grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Foto Utama Lahan</label>
-                                            <div class="border-2 border-dashed border-gray-300 bg-gray-50 rounded-xl p-4 text-center relative hover:bg-emerald-50 hover:border-emerald-300 transition h-32 flex items-center justify-center">
-                                                <input type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="previewImage(this, 't-preview', 't-placeholder', 't-base64')">
-                                                <div id="t-placeholder" class="text-gray-400 pointer-events-none flex flex-col items-center"><i class="fas fa-camera text-3xl mb-2 text-emerald-400"></i><p class="text-xs font-bold">Foto 1</p></div>
-                                                <img id="t-preview" class="hidden max-h-24 mx-auto rounded shadow-sm object-cover" src="" alt="Preview">
-                                                <input type="hidden" id="t-base64">
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Foto Tambahan (Opsional)</label>
-                                            <div class="border-2 border-dashed border-gray-300 bg-gray-50 rounded-xl p-4 text-center relative hover:bg-emerald-50 hover:border-emerald-300 transition h-32 flex items-center justify-center">
-                                                <input type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="previewImage(this, 't-preview-2', 't-placeholder-2', 't-base64-2')">
-                                                <div id="t-placeholder-2" class="text-gray-400 pointer-events-none flex flex-col items-center"><i class="fas fa-images text-3xl mb-2 text-emerald-400"></i><p class="text-xs font-bold">Foto 2</p></div>
-                                                <img id="t-preview-2" class="hidden max-h-24 mx-auto rounded shadow-sm object-cover" src="" alt="Preview 2">
-                                                <input type="hidden" id="t-base64-2">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mt-8 flex justify-end gap-3 sticky bottom-4 z-50 p-4 bg-white/80 backdrop-blur-md rounded-2xl border border-gray-200 shadow-xl no-print">
-                            <button type="button" onclick="switchTab('inventaris-menu')" class="px-6 py-3.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold transition-colors">Batal</button>
-                            <button type="submit" id="btn-t-submit" class="w-full md:w-auto px-10 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-200 flex gap-2 items-center justify-center transition-transform active:scale-95">
-                                <i class="fas fa-save"></i> Simpan Data Tanah
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- FORM KIB C: BANGUNAN -->
-                <div id="form-bangunan-section" class="section-container hidden animate-fade-in form-section">
-                    <div class="flex items-center gap-4 mb-6">
-                        <button onclick="switchTab('inventaris-menu')" class="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 shadow-sm transition-colors"><i class="fas fa-arrow-left text-lg"></i></button>
-                        <div>
-                            <h1 id="title-form-bangunan" class="text-3xl font-extrabold text-gray-800 tracking-tight">Formulir KIB C (Bangunan)</h1>
-                        </div>
-                    </div>
-                    <form onsubmit="submitData(event, 'Bangunan')" id="form-bangunan" class="space-y-6">
-                        <input type="hidden" id="b-id">
-                        
-                        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden relative z-10 hover:shadow-md hover:border-blue-300 transition-all duration-300">
-                            <div class="bg-blue-50/80 border-b border-blue-100 px-5 py-3.5">
-                                <h3 class="text-sm md:text-base font-bold text-blue-800 flex items-center gap-2 uppercase tracking-wide"><i class="fas fa-id-card text-blue-600 text-lg"></i> 1. Identitas Aset</h3>
-                            </div>
-                            <div class="p-5">
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Nama Bangunan <span class="text-red-500">*</span></label><input type="text" id="b-nama" required class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Nomor Kode Barang</label><input type="text" id="b-kode" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Nomor Register</label><input type="text" id="b-register" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden relative z-10 hover:shadow-md hover:border-blue-300 transition-all duration-300">
-                            <div class="bg-blue-50/80 border-b border-blue-100 px-5 py-3.5">
-                                <h3 class="text-sm md:text-base font-bold text-blue-800 flex items-center gap-2 uppercase tracking-wide"><i class="fas fa-expand text-blue-600 text-lg"></i> 2. Fisik & Teknis</h3>
-                            </div>
-                            <div class="p-5">
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Luas Lantai (m²) <span class="text-red-500">*</span></label><input type="number" id="b-luas" required class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Jumlah Lantai</label><input type="number" id="b-lantai" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Letak / Alamat</label><input type="text" id="b-alamat" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Jenis Konstruksi <span class="text-red-500">*</span></label><input type="text" id="b-konstruksi" required class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div>
-                                        <label class="block text-sm font-bold text-gray-700 mb-1.5">Kondisi Bangunan <span class="text-red-500">*</span></label>
-                                        <select id="b-kondisi" required class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium">
-                                            <option value="Baik">Baik</option><option value="Kurang Baik">Kurang Baik</option><option value="Rusak Berat">Rusak Berat</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden relative z-10 hover:shadow-md hover:border-blue-300 transition-all duration-300">
-                            <div class="bg-blue-50/80 border-b border-blue-100 px-5 py-3.5">
-                                <h3 class="text-sm md:text-base font-bold text-blue-800 flex items-center gap-2 uppercase tracking-wide"><i class="fas fa-folder text-blue-600 text-lg"></i> 3. Legalitas & Administrasi</h3>
-                            </div>
-                            <div class="p-5 space-y-5">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Nomor Dokumen (IMB/PBG)</label><input type="text" id="b-noimb" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Tanggal IMB</label><input type="date" id="b-tglimb" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Thn Buat</label><input type="number" id="b-tahunbuat" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Thn Beli</label><input type="number" id="b-tahunbeli" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Asal Usul</label><input type="text" id="b-asal" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Nilai (Rp) <span class="text-red-500">*</span></label><input type="number" id="b-nilai" required class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden relative z-10 hover:shadow-md hover:border-blue-300 transition-all duration-300">
-                            <div class="bg-blue-50/80 border-b border-blue-100 px-5 py-3.5"><h3 class="text-sm md:text-base font-bold text-blue-800 flex items-center gap-2 uppercase tracking-wide"><i class="fas fa-map-marker-alt text-blue-600 text-lg"></i> 4. Lokasi & Visual</h3></div>
-                            <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Koordinat GPS</label>
-                                    <div class="relative mb-2">
-                                        <input type="text" id="b-koordinat" readonly class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl pr-28 outline-none text-gray-600 font-medium">
-                                        <div class="absolute right-2 top-2 flex gap-1">
-                                            <a id="b-map-link" href="#" target="_blank" class="hidden p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"><i class="fas fa-external-link-alt"></i></a>
-                                            <button type="button" onclick="copyKoordinat('b-koordinat')" class="p-2 bg-white border border-blue-200 text-blue-600 rounded-lg"><i class="fas fa-copy"></i></button>
-                                        </div>
-                                    </div>
-                                    <button type="button" onclick="getLocation('b-koordinat')" class="w-full bg-blue-50 text-blue-700 border border-blue-200 p-3 rounded-xl hover:bg-blue-100 font-bold"><i class="fas fa-map-marker-alt"></i> Deteksi</button>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Foto Bangunan</label>
-                                    <div class="border-2 border-dashed border-gray-300 bg-gray-50 rounded-xl p-4 text-center relative h-32 flex items-center justify-center">
-                                        <input type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="previewImage(this, 'b-preview', 'b-placeholder', 'b-base64')">
-                                        <div id="b-placeholder" class="text-gray-400 pointer-events-none"><i class="fas fa-camera text-3xl mb-2 text-blue-400"></i></div>
-                                        <img id="b-preview" class="hidden max-h-24 mx-auto rounded object-cover shadow-sm" src="">
-                                        <input type="hidden" id="b-base64">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mt-8 flex justify-end gap-3 sticky bottom-4 z-50 p-4 bg-white/80 backdrop-blur-md rounded-2xl border border-gray-200 shadow-xl no-print">
-                            <button type="button" onclick="switchTab('inventaris-menu')" class="px-6 py-3.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold transition-colors">Batal</button>
-                            <button type="submit" id="btn-b-submit" class="w-full md:w-auto px-10 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-200 flex gap-2 items-center justify-center">
-                                <i class="fas fa-save"></i> Simpan Data Bangunan
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- FORM KIB B: PERALATAN & MESIN -->
-                <div id="form-peralatan-section" class="section-container hidden animate-fade-in form-section">
-                    <div class="flex items-center gap-4 mb-6">
-                        <button onclick="switchTab('inventaris-menu')" class="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 shadow-sm"><i class="fas fa-arrow-left text-lg"></i></button>
-                        <h1 id="title-form-peralatan" class="text-3xl font-extrabold text-gray-800 tracking-tight">Formulir KIB B (Peralatan)</h1>
-                    </div>
-                    <form onsubmit="submitData(event, 'Peralatan')" id="form-peralatan" class="space-y-6">
-                        <input type="hidden" id="p-id">
-                        
-                        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden relative z-10 hover:shadow-md hover:border-amber-300 transition-all duration-300">
-                            <div class="bg-amber-50/80 border-b border-amber-100 px-5 py-3.5">
-                                <h3 class="text-sm md:text-base font-bold text-amber-800 flex items-center gap-2 uppercase tracking-wide"><i class="fas fa-box-open text-amber-600 text-lg"></i> 1. Identitas Aset</h3>
-                            </div>
-                            <div class="p-5">
-                                <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
-                                    <div class="col-span-2"><label class="block text-sm font-bold text-gray-700 mb-1.5">Nama Barang <span class="text-red-500">*</span></label><input type="text" id="p-nama" required class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div class="col-span-2"><label class="block text-sm font-bold text-gray-700 mb-1.5">Merk / Tipe <span class="text-red-500">*</span></label><input type="text" id="p-merk" required class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Kode Barang</label><input type="text" id="p-kode" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Nomor Register</label><input type="text" id="p-register" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden relative z-10 hover:shadow-md hover:border-amber-300 transition-all duration-300">
-                            <div class="bg-amber-50/80 border-b border-amber-100 px-5 py-3.5">
-                                <h3 class="text-sm md:text-base font-bold text-amber-800 flex items-center gap-2 uppercase tracking-wide"><i class="fas fa-wrench text-amber-600 text-lg"></i> 2. Spesifikasi Teknis</h3>
-                            </div>
-                            <div class="p-5 space-y-5">
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Ukuran/CC</label><input type="text" id="p-ukuran" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Warna</label><input type="text" id="p-warna" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Bahan Baku</label><input type="text" id="p-bahan" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-gray-100">
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">No Rangka</label><input type="text" id="p-norangka" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">No Mesin</label><input type="text" id="p-nomesin" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden relative z-10 hover:shadow-md hover:border-amber-300 transition-all duration-300">
-                            <div class="bg-amber-50/80 border-b border-amber-100 px-5 py-3.5">
-                                <h3 class="text-sm md:text-base font-bold text-amber-800 flex items-center gap-2 uppercase tracking-wide"><i class="fas fa-folder text-amber-600 text-lg"></i> 3. Administrasi & Kondisi</h3>
-                            </div>
-                            <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Tahun Pembuatan</label><input type="number" id="p-tahunbuat" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Tahun Pembelian</label><input type="number" id="p-tahunbeli" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Asal Usul <span class="text-red-500">*</span></label><input type="text" id="p-asal" required class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div><label class="block text-sm font-bold text-gray-700 mb-1.5">Harga (Rp) <span class="text-red-500">*</span></label><input type="number" id="p-harga" required class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium"></div>
-                                    <div class="col-span-2">
-                                        <label class="block text-sm font-bold text-gray-700 mb-1.5">Kondisi Barang <span class="text-red-500">*</span></label>
-                                        <select id="p-kondisi" required class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium">
-                                            <option value="Baik (B)">Baik (B)</option><option value="Kurang Baik (KB)">Kurang Baik (KB)</option><option value="Rusak Berat (RB)">Rusak Berat (RB)</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Lokasi / Penanggung Jawab</label>
-                                    <input type="text" id="p-lokasi" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl outline-none font-medium mb-4">
-                                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Foto Barang</label>
-                                    <div class="border-2 border-dashed border-gray-300 bg-gray-50 rounded-xl p-4 text-center relative h-[100px] flex items-center justify-center">
-                                        <input type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="previewImage(this, 'p-preview', 'p-placeholder', 'p-base64')">
-                                        <div id="p-placeholder" class="text-gray-400 pointer-events-none"><i class="fas fa-camera text-3xl mb-1 text-amber-400"></i></div>
-                                        <img id="p-preview" class="hidden max-h-20 mx-auto rounded object-cover shadow-sm" src="">
-                                        <input type="hidden" id="p-base64">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mt-8 flex justify-end gap-3 sticky bottom-4 z-50 p-4 bg-white/80 backdrop-blur-md rounded-2xl border border-gray-200 shadow-xl no-print">
-                            <button type="button" onclick="switchTab('inventaris-menu')" class="px-6 py-3.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold transition-colors">Batal</button>
-                            <button type="submit" id="btn-p-submit" class="w-full md:w-auto px-10 py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-lg shadow-amber-200 flex gap-2 items-center justify-center">
-                                <i class="fas fa-save"></i> Simpan Data Peralatan
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- LAPORAN MENU SECTION -->
-                <div id="laporan-menu-section" class="section-container hidden animate-fade-in">
-                    <div class="mb-8 border-l-4 border-emerald-500 pl-4">
-                        <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">Cetak & Laporan</h1>
-                        <p class="text-gray-500 font-medium mt-1">Pilih kategori untuk melihat, mencari, dan mencetak rekap KIB atau Laporan Individu.</p>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                        <button onclick="openLaporan('Semua')" class="bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl p-6 flex flex-col items-center text-center transition-all shadow-sm hover:shadow-md">
-                            <div class="w-16 h-16 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center text-2xl mb-3 shadow-inner"><i class="fas fa-list"></i></div>
-                            <h3 class="font-bold text-gray-800">Semua Data</h3><p class="text-xs text-gray-500 mt-1 font-medium">Laporan keseluruhan</p>
-                        </button>
-                        <button onclick="openLaporan('Lahan')" class="bg-white hover:bg-emerald-50 border border-gray-200 rounded-2xl p-6 flex flex-col items-center text-center transition-all shadow-sm hover:shadow-md hover:border-emerald-300">
-                            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-2xl mb-3 shadow-inner"><i class="fas fa-map"></i></div>
-                            <h3 class="font-bold text-gray-800">Laporan Tanah</h3><p class="text-xs text-emerald-600 font-bold mt-1 bg-emerald-100/50 px-2 rounded">Buku KIB A</p>
-                        </button>
-                        <button onclick="openLaporan('Bangunan')" class="bg-white hover:bg-blue-50 border border-gray-200 rounded-2xl p-6 flex flex-col items-center text-center transition-all shadow-sm hover:shadow-md hover:border-blue-300">
-                            <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl mb-3 shadow-inner"><i class="fas fa-building"></i></div>
-                            <h3 class="font-bold text-gray-800">Laporan Bangunan</h3><p class="text-xs text-blue-600 font-bold mt-1 bg-blue-100/50 px-2 rounded">Buku KIB C</p>
-                        </button>
-                        <button onclick="openLaporan('Peralatan')" class="bg-white hover:bg-amber-50 border border-gray-200 rounded-2xl p-6 flex flex-col items-center text-center transition-all shadow-sm hover:shadow-md hover:border-amber-300">
-                            <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-2xl mb-3 shadow-inner"><i class="fas fa-cogs"></i></div>
-                            <h3 class="font-bold text-gray-800">Peralatan Mesin</h3><p class="text-xs text-amber-600 font-bold mt-1 bg-amber-100/50 px-2 rounded">Buku KIB B</p>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- DATA TABLE SECTION (ADMIN) -->
-                <div id="data-section" class="section-container hidden animate-fade-in">
-                    
-                    <div class="print-header">
-                        <h1 id="print-laporan-title" class="text-2xl font-bold uppercase tracking-wider mb-2">Laporan Inventaris Desa</h1>
-                        <p class="text-sm">Tahun Anggaran Berjalan | Dicetak pada: <span id="print-date"></span></p>
-                        <hr class="my-4 border-gray-400 border-2">
-                    </div>
-
-                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 no-print gap-4">
-                        <div class="flex items-center gap-4 w-full md:w-auto">
-                            <button onclick="switchTab('laporan-menu')" class="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-emerald-50 shadow-sm flex-shrink-0"><i class="fas fa-arrow-left"></i></button>
-                            <h2 id="laporan-ui-title" class="text-2xl font-extrabold text-gray-800 tracking-tight flex-1">Daftar Inventaris</h2>
-                        </div>
-                        
-                        <div class="flex items-center gap-2 w-full md:w-auto">
-                            <div class="relative flex-1 md:w-64">
-                                <span class="absolute left-3 top-3 text-gray-400"><i class="fas fa-search"></i></span>
-                                <input type="text" id="search-input" onkeyup="filterDataToTable()" class="w-full pl-9 p-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-medium shadow-sm" placeholder="Cari data admin...">
-                            </div>
-                        </div>
-
-                        <div class="flex flex-wrap gap-2 w-full md:w-auto">
-                            <button onclick="fetchData()" class="flex-1 md:flex-none text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-4 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border border-emerald-200">
-                                <i class="fas fa-sync-alt"></i> <span>Segarkan</span>
-                            </button>
-                            <button onclick="exportExcel()" class="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm flex items-center justify-center gap-2">
-                                <i class="fas fa-file-excel"></i> Excel
-                            </button>
-                            <button onclick="printLaporan()" class="w-full md:w-auto bg-gray-800 hover:bg-gray-900 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm flex items-center justify-center gap-2">
-                                <i class="fas fa-print"></i> Cetak Tabel
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-sm text-gray-600 whitespace-nowrap md:whitespace-normal">
-                                <thead id="table-head" class="bg-gray-100 border-b border-gray-200 text-gray-800 uppercase text-[10px] tracking-wider font-bold"></thead>
-                                <tbody id="table-body" class="divide-y divide-gray-100"><tr><td class="p-8 text-center text-gray-400 font-medium">Memuat format...</td></tr></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- DETAIL INDIVIDU SECTION (Untuk Cetak 1 Aset) -->
-                <div id="detail-section" class="section-container hidden animate-fade-in bg-white p-4 md:p-8 rounded-2xl shadow-sm border border-gray-200 max-w-4xl mx-auto">
-                    <div class="flex justify-between items-center mb-6 border-b pb-4 no-print">
-                        <button onclick="openLaporan(currentLaporanCategory)" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-bold flex items-center gap-2">
-                            <i class="fas fa-arrow-left"></i> Kembali ke Tabel
-                        </button>
-                        <button onclick="window.print()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-md flex items-center gap-2">
-                            <i class="fas fa-print"></i> Cetak Dokumen KIB
-                        </button>
-                    </div>
-
-                    <div id="print-area-detail" class="text-gray-900 bg-white space-y-3">
-                        <div class="text-center mb-4 border-b-2 border-gray-800 pb-3">
-                            <h2 class="text-lg font-bold uppercase tracking-widest">Pemerintah Desa Baleadi</h2>
-                            <h1 id="det-title" class="text-xl font-black uppercase mt-0.5">Kartu Inventaris Barang (KIB)</h1>
-                            <p class="text-xs font-medium mt-0.5">Tahun Anggaran Berjalan</p>
-                        </div>
-                        
-                        <div id="detail-content" class="space-y-3"></div>
-
-                        <div class="mt-10 flex justify-end text-center print-break-before-avoid pt-4">
-                            <div class="w-48">
-                                <p class="mb-12 text-xs">Kepala Desa Baleadi,</p>
-                                <p class="font-bold border-b border-gray-800 inline-block px-4 text-xs">......................................</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </main>
-        
-        <!-- BOTTOM NAV (MOBILE ADMIN) -->
-        <div id="bottom-nav" class="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-gray-200 flex justify-around items-end md:hidden z-50 pt-2 pb-5 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.1)] no-print">
-            <button onclick="switchTab('dashboard')" id="nav-mobile-dashboard" class="flex flex-col items-center gap-1 p-2 w-20 text-emerald-600 transition-colors">
-                <i class="fas fa-chart-pie text-2xl"></i><span class="text-[10px] font-bold">Beranda</span>
+            <button onclick="prosesLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition duration-200">
+                Masuk Sistem
             </button>
-            <button onclick="switchTab('inventaris-menu')" id="nav-mobile-inventaris-menu" class="relative -top-6 flex flex-col items-center justify-center w-16 h-16 bg-emerald-600 text-white rounded-full shadow-xl shadow-emerald-200 border-4 border-gray-50 active:scale-95 transition-transform">
-                <i class="fas fa-plus text-2xl"></i><span class="absolute -bottom-6 text-[10px] text-gray-500 font-bold whitespace-nowrap">Input Aset</span>
-            </button>
-            <button onclick="switchTab('laporan-menu')" id="nav-mobile-laporan-menu" class="flex flex-col items-center gap-1 p-2 w-20 text-gray-400 hover:text-emerald-600 transition-colors">
-                <i class="fas fa-file-alt text-2xl"></i><span class="text-[10px] font-bold">Laporan</span>
+            <button onclick="closeModal('loginModal')" class="w-full mt-3 text-gray-500 hover:text-gray-700 text-sm font-medium">
+                Batal
             </button>
         </div>
     </div>
 
+    <!-- Modal Detail Admin & Print -->
+    <div id="adminDetailModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50 no-print">
+                <h3 class="text-xl font-bold text-gray-800">Kartu Inventaris Barang (KIB)</h3>
+                <div>
+                    <button onclick="printKIB()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium mr-2">
+                        <i class="fas fa-print mr-1"></i> Cetak
+                    </button>
+                    <button onclick="closeModal('adminDetailModal')" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Area Cetak -->
+            <div id="print-area" class="p-8 overflow-y-auto">
+                <div class="text-center mb-6 border-b-2 border-gray-800 pb-4">
+                    <h2 class="text-2xl font-bold uppercase">Kartu Inventaris Barang (KIB) A</h2>
+                    <p class="text-lg">Tanah</p>
+                </div>
+                <table class="w-full text-left text-sm">
+                    <tbody id="detailTableBody">
+                        <!-- Detail KIB di-generate JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detail Publik (Tanpa Print, Identitas Menonjol) -->
+    <div id="publicDetailModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="px-6 py-4 border-b flex justify-between items-center bg-teal-50">
+                <h3 class="text-xl font-bold text-teal-800"><i class="fas fa-info-circle mr-2"></i>Informasi Detail Aset</h3>
+                <button onclick="closeModal('publicDetailModal')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <div class="text-center mb-6 bg-gray-50 p-4 rounded-lg border">
+                    <!-- NAMA PENGGUNA PALING ATAS & MENONJOL -->
+                    <div id="pub_detail_pengguna" class="text-2xl font-black text-gray-900 uppercase mb-2"></div>
+                    <div class="text-gray-500 text-sm mb-1">Hak Penggunaan Oleh</div>
+                    <hr class="my-3 border-gray-200">
+                    <div id="pub_detail_tanah" class="text-lg font-bold text-teal-700"></div>
+                </div>
+                <div class="space-y-3" id="pub_detail_list">
+                    <!-- Detail info lainnya -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- JAVASCRIPT LOGIC                           -->
+    <!-- ========================================== -->
     <script>
-        // --- KONFIGURASI DATABASE GAS ---
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzRwyIar1NrWUD4FXyGSB3sbwdkrcZxJ2-MST_KgfHuxsVxFxKxAp4IpyUe57JWl1lc/exec'; 
-        
-        let inventoryData = {}; 
-        let currentLaporanCategory = 'Semua';
-        let itemToDelete = null;
-        let currentDetailItem = null;
-        
-        function escapeHTML(str) {
-            if(!str) return '-';
-            return str.toString().replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
-        }
-
-        // --- SISTEM LOGIN & NAVIGASI PORTAL ---
-        function openLogin() {
-            document.getElementById('login-section').classList.remove('hidden');
-            setTimeout(() => document.getElementById('pin-input').focus(), 100);
-        }
-        function closeLogin() {
-            document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('pin-input').value = '';
-        }
-        
-        function checkLogin() {
-            if (document.getElementById('pin-input').value === '789') {
-                sessionStorage.setItem('isLoggedIn', 'true');
-                closeLogin();
-                showToast('Otentikasi Admin Berhasil', 'success');
-                showAdminPortal();
-            } else {
-                showToast('Sandi Administrator Salah!', 'error');
-                document.getElementById('pin-input').value = '';
+        // Data Dummy untuk simulasi jika Apps Script tidak tersedia
+        let dataAset = [
+            {
+                id: 1, 
+                nama_hak_pengguna: "Pemerintah Desa Baleadi", 
+                nama_tanah: "Tanah Kas Desa (Bengkok)", 
+                alamat: "Dusun Krajan, RT 01/RW 02", 
+                tahun: "2010", 
+                kondisi: "Baik", 
+                luas: "15000 m2"
+            },
+            {
+                id: 2, 
+                nama_hak_pengguna: "Koperasi Desa Merah-Putih", 
+                nama_tanah: "Lahan Gedung Koperasi", 
+                alamat: "Jl. Poros Desa Baleadi No. 45", 
+                tahun: "2026", 
+                kondisi: "Baik", 
+                luas: "400 m2"
+            },
+            {
+                id: 3, 
+                nama_hak_pengguna: "Pemerintah Desa Baleadi", 
+                nama_tanah: "Lahan Pemakaman Umum", 
+                alamat: "Dusun Ngablak, Ujung Desa", 
+                tahun: "1995", 
+                kondisi: "Kurang Baik", 
+                luas: "5000 m2"
             }
-        }
-        
-        function logout() { 
-            sessionStorage.removeItem('isLoggedIn'); 
-            showToast('Berhasil Keluar', 'success');
-            showPublicPortal(); 
+        ];
+
+        // --- SISTEM LOGIN & NAVIGASI ---
+        function openLoginModal() {
+            document.getElementById('loginModal').classList.remove('hidden');
         }
 
-        function showAdminPortal() {
-            document.getElementById('public-portal').classList.add('hidden');
-            document.getElementById('app-container').classList.remove('hidden');
-            switchTab('dashboard');
-            fetchData(); 
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
         }
-        
-        function showPublicPortal() {
-            document.getElementById('app-container').classList.add('hidden');
-            document.getElementById('public-portal').classList.remove('hidden');
-            initPublicPortal();
-        }
-        
-        function backToPublic() { showPublicPortal(); }
 
-        // --- FUNGSI PORTAL PUBLIK ---
-        async function initPublicPortal() {
-            if (Object.keys(inventoryData).length === 0) {
-                document.getElementById('public-loading').classList.remove('hidden');
-                document.getElementById('public-table-container').classList.add('hidden');
-                document.getElementById('public-empty').classList.add('hidden');
+        function prosesLogin() {
+            const pass = document.getElementById('passwordInput').value;
+            if (pass === '789') {
+                closeModal('loginModal');
+                document.getElementById('passwordInput').value = '';
+                // Sembunyikan Publik, Tampilkan Admin
+                document.getElementById('public-portal').classList.add('hidden');
+                document.getElementById('admin-dashboard').classList.remove('hidden');
+                showAdminPage('menu');
+                renderAdminTable();
                 
-                if(GAS_URL.startsWith('http')) {
-                    try {
-                        const res = await fetch(`${GAS_URL}?action=read`);
-                        if (!res.ok) throw new Error("Jaringan gagal merespons.");
-                        
-                        const textData = await res.text();
-                        const result = JSON.parse(textData);
-                        
-                        if(result.status === 'success') {
-                            inventoryData = result.data || {};
-                        }
-                    } catch (err) { 
-                        console.warn("Informasi Mode Offline:", err.message);
-                        showToast("Koneksi publik ke database gagal. Menggunakan mode Pratinjau.", "warning");
-                    }
-                }
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Login Berhasil',
+                    text: 'Selamat datang di Dasbor Admin!',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire('Akses Ditolak', 'Kata sandi salah!', 'error');
             }
-            searchPublicData();
         }
 
-        function searchPublicData() {
-            const searchTerm = document.getElementById('public-search').value.toLowerCase();
-            const tbody = document.getElementById('public-table-body');
-            const countEl = document.getElementById('public-count');
+        function logoutAdmin() {
+            document.getElementById('admin-dashboard').classList.add('hidden');
+            document.getElementById('public-portal').classList.remove('hidden');
+            renderPublicData(); // Segarkan tampilan publik
+        }
+
+        function showAdminPage(pageId) {
+            // Sembunyikan semua konten di admin
+            document.getElementById('admin-menu-grid').classList.add('hidden');
+            document.getElementById('page-input').classList.add('hidden');
+            document.getElementById('page-laporan').classList.add('hidden');
+
+            if (pageId === 'menu') {
+                document.getElementById('admin-menu-grid').classList.remove('hidden');
+            } else {
+                document.getElementById(pageId).classList.remove('hidden');
+            }
+        }
+
+
+        // --- LOGIKA PORTAL PUBLIK ---
+        function renderPublicData(query = "") {
+            const container = document.getElementById('publicDataContainer');
+            container.innerHTML = '';
             
-            document.getElementById('public-loading').classList.add('hidden');
-            tbody.innerHTML = '';
-            
-            let matchedCount = 0;
-            const keys = Object.keys(inventoryData);
-            
-            if (keys.length === 0) {
-                document.getElementById('public-empty').classList.remove('hidden');
-                document.getElementById('public-table-container').classList.add('hidden');
-                countEl.innerText = "0 Data";
+            const filteredData = dataAset.filter(item => {
+                const keyword = query.toLowerCase();
+                const pengguna = (item.nama_hak_pengguna || "").toLowerCase();
+                const tanah = (item.nama_tanah || "").toLowerCase();
+                const alamat = (item.alamat || "").toLowerCase();
+                return pengguna.includes(keyword) || tanah.includes(keyword) || alamat.includes(keyword);
+            });
+
+            if (filteredData.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500">Pencarian tidak menemukan hasil.</div>`;
                 return;
             }
 
-            keys.reverse().forEach(key => {
-                const item = inventoryData[key];
-                const str = JSON.stringify(item).toLowerCase();
+            filteredData.forEach((item, index) => {
+                // Menemukan index asli dari array utama untuk fungsi onclick
+                const originalIndex = dataAset.findIndex(x => x.id === item.id);
                 
-                if (searchTerm && !str.includes(searchTerm)) return;
-                
-                matchedCount++;
-                
-                const badge = (item.kategori === 'Lahan') ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : (item.kategori === 'Bangunan') ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-amber-100 text-amber-700 border-amber-200';
-                
-                let titleHtml = '';
-                let statusHtml = '';
-                let lokasiHtml = '';
-                
-                if(item.kategori === 'Lahan') {
-                    titleHtml = `<div class="font-black text-gray-900 uppercase text-sm md:text-base flex items-center gap-1.5"><i class="fas fa-user-circle text-emerald-600"></i> ${escapeHTML(item.hakPengguna)}</div>
-                                 <div class="text-xs md:text-sm text-gray-600 font-bold mt-1">${escapeHTML(item.nama)}</div>`;
-                    statusHtml = escapeHTML(item.kondisi);
-                    lokasiHtml = escapeHTML(item.alamatLokasi);
-                } else if(item.kategori === 'Bangunan') {
-                    titleHtml = `<div class="font-bold text-gray-800 text-sm md:text-base">${escapeHTML(item.nama)}</div>`;
-                    statusHtml = escapeHTML(item.kondisi);
-                    lokasiHtml = escapeHTML(item.alamat);
-                } else {
-                    titleHtml = `<div class="font-bold text-gray-800 text-sm md:text-base">${escapeHTML(item.nama)}</div>
-                                 <div class="text-xs text-gray-500">${escapeHTML(item.merk)}</div>`;
-                    statusHtml = escapeHTML(item.kondisi);
-                    lokasiHtml = escapeHTML(item.lokasi);
-                }
-                
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-gray-50/80 border-b border-gray-100 transition-colors cursor-pointer";
-                tr.onclick = () => openPublicDetail(key);
-                tr.innerHTML = `
-                    <td class="p-4 text-center font-bold text-gray-400">${matchedCount}</td>
-                    <td class="p-4">${titleHtml}</td>
-                    <td class="p-4"><span class="px-2.5 py-1 rounded-md text-[10px] font-bold border ${badge}">${item.kategori}</span></td>
-                    <td class="p-4 hidden md:table-cell font-medium">${statusHtml}</td>
-                    <td class="p-4 hidden md:table-cell text-xs"><i class="fas fa-map-marker-alt text-emerald-500 mr-1"></i> ${lokasiHtml || '-'}</td>
-                    <td class="p-4 text-center"><button class="text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Lihat</button></td>
-                `;
-                tbody.appendChild(tr);
-            });
-            
-            countEl.innerText = `${matchedCount} Data`;
-            
-            if(matchedCount > 0) {
-                document.getElementById('public-empty').classList.add('hidden');
-                document.getElementById('public-table-container').classList.remove('hidden');
-            } else {
-                document.getElementById('public-empty').classList.remove('hidden');
-                document.getElementById('public-table-container').classList.add('hidden');
-            }
-        }
-
-        // --- FUNGSI MODAL DETAIL PUBLIK ---
-        function openPublicDetail(key) {
-            const item = inventoryData[key];
-            if(!item) return;
-            
-            document.getElementById('public-detail-modal').classList.remove('hidden');
-            document.getElementById('public-det-title').innerText = `Kartu Inventaris Barang (KIB ${item.kategori === 'Lahan' ? 'A - Tanah' : (item.kategori === 'Bangunan' ? 'C - Gedung & Bangunan' : 'B - Peralatan & Mesin')})`;
-            
-            const content = document.getElementById('public-detail-content');
-            let sections = '';
-            
-            const renderBlock = (title, dataArray) => {
-                let html = `<div class="rounded-xl overflow-hidden border border-gray-200 bg-white mb-3 shadow-sm">
-                            <div class="font-bold text-emerald-800 uppercase tracking-wider text-xs px-4 py-2 bg-emerald-50 border-b border-emerald-100 flex items-center gap-2"><i class="fas fa-check-circle text-emerald-500"></i> ${title}</div>
-                            <div class="flex flex-col">`;
-                dataArray.forEach(row => {
-                    const displayValue = row.isHtml ? row.value : escapeHTML(row.value);
-                    html += `<div class="flex w-full text-xs md:text-sm border-b border-gray-100 last:border-b-0">
-                                <div class="p-3 text-gray-600 font-semibold w-2/5 border-r border-gray-100 bg-gray-50/50">${row.label}</div>
-                                <div class="p-3 text-gray-900 w-3/5 font-medium break-words">${displayValue}</div>
-                             </div>`;
-                });
-                html += `</div></div>`;
-                return html;
-            };
-
-            const buatLinkPeta = (koordinat) => {
-                if (!koordinat || koordinat.trim() === '') return '-';
-                return `${escapeHTML(koordinat)} <a href="https://maps.google.com/?q=${escapeHTML(koordinat)}" target="_blank" class="text-blue-600 hover:underline font-bold ml-1 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 transition-colors hover:bg-blue-100 mt-1 inline-block"><i class="fas fa-map-marked-alt"></i> Buka Maps</a>`;
-            };
-
-            if(item.kategori === 'Lahan') {
-                sections += renderBlock('Identitas Aset', [
-                    { label: 'Nama Hak Pengguna', value: `<span class="font-black text-gray-900 uppercase text-base">${escapeHTML(item.hakPengguna)}</span>`, isHtml: true },
-                    { label: 'Nama Tanah', value: item.nama }, { label: 'Jenis Tanah', value: item.jenisTanah }, { label: 'Alamat / Lokasi', value: item.alamatLokasi },
-                    { label: 'Nomor Kode', value: item.kodeBarang }
-                ]);
-                sections += renderBlock('Fisik & Legalitas', [
-                    { label: 'Luas', value: item.luasSekarang ? item.luasSekarang + ' m² (Sekarang)' : (item.luas ? item.luas + ' m² (Awal)' : '-') },
-                    { label: 'Status Hak', value: item.kondisi }, { label: 'Asal Usul', value: item.asalUsul },
-                    { label: 'Titik Koordinat', value: buatLinkPeta(item.koordinat), isHtml: true }
-                ]);
-                if(item.foto) {
-                    sections += `<div class="rounded-xl overflow-hidden border border-gray-200 bg-white mb-3 shadow-sm">
-                                    <div class="font-bold text-emerald-800 uppercase tracking-wider text-xs px-4 py-2 bg-emerald-50 border-b border-emerald-100">Foto Lokasi</div>
-                                    <div class="p-3"><img src="${item.foto}" onclick="viewPhoto('${item.foto}')" class="w-full h-auto rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" alt="Foto"></div>
-                                 </div>`;
-                }
-            } else if(item.kategori === 'Bangunan') {
-                sections += renderBlock('Identitas Bangunan', [
-                    { label: 'Nama Bangunan', value: item.nama }, { label: 'Alamat', value: item.alamat }, { label: 'Kondisi', value: item.kondisi },
-                    { label: 'Luas Lantai', value: item.luas ? item.luas + ' m²' : '-' }, { label: 'Asal Usul', value: item.asalUsul },
-                    { label: 'Titik Koordinat', value: buatLinkPeta(item.koordinat), isHtml: true }
-                ]);
-                if(item.foto) {
-                    sections += `<div class="rounded-xl overflow-hidden border border-gray-200 bg-white shadow-sm">
-                                    <div class="p-3"><img src="${item.foto}" onclick="viewPhoto('${item.foto}')" class="w-full h-auto rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" alt="Foto"></div>
-                                 </div>`;
-                }
-            } else {
-                sections += renderBlock('Identitas Peralatan', [
-                    { label: 'Nama Barang', value: item.nama }, { label: 'Merk / Tipe', value: item.merk }, { label: 'Kondisi', value: item.kondisi },
-                    { label: 'Lokasi Penempatan', value: item.lokasi }, { label: 'Asal Usul', value: item.asalUsul }
-                ]);
-                if(item.foto) {
-                    sections += `<div class="rounded-xl overflow-hidden border border-gray-200 bg-white shadow-sm">
-                                    <div class="p-3"><img src="${item.foto}" onclick="viewPhoto('${item.foto}')" class="w-full h-auto rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" alt="Foto"></div>
-                                 </div>`;
-                }
-            }
-            content.innerHTML = sections;
-        }
-
-        function closePublicDetail() {
-            document.getElementById('public-detail-modal').classList.add('hidden');
-        }
-
-        // --- FUNGSI ADMIN INTERNAL ---
-        function switchTab(tabId) {
-            document.querySelectorAll('.section-container').forEach(el => el.classList.add('hidden'));
-            document.getElementById(tabId + '-section').classList.remove('hidden');
-            
-            ['dashboard', 'inventaris-menu', 'laporan-menu'].forEach(id => {
-                const btnDesk = document.getElementById('nav-desktop-' + id);
-                if(btnDesk) {
-                    btnDesk.className = id === tabId 
-                    ? "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-emerald-700/50 text-white font-semibold transition-all text-left shadow-inner"
-                    : "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-emerald-800 transition-all text-left text-emerald-100 font-medium";
-                }
-                const btnMob = document.getElementById('nav-mobile-' + id);
-                if(btnMob) {
-                    btnMob.className = id === tabId 
-                    ? (id === 'inventaris-menu' ? "relative -top-6 flex flex-col items-center justify-center w-16 h-16 bg-emerald-600 text-white rounded-full shadow-xl shadow-emerald-200 border-4 border-gray-50 active:scale-95 transition-transform" : "flex flex-col items-center gap-1 p-2 w-20 text-emerald-600 transition-colors")
-                    : (id === 'inventaris-menu' ? "relative -top-6 flex flex-col items-center justify-center w-16 h-16 bg-gray-400 text-white rounded-full shadow-xl border-4 border-gray-50 active:scale-95 transition-transform" : "flex flex-col items-center gap-1 p-2 w-20 text-gray-400 hover:text-emerald-600 transition-colors");
-                }
-            });
-        }
-
-        function openForm(type, editData = null, editId = null) {
-            document.querySelectorAll('.section-container').forEach(el => el.classList.add('hidden'));
-            document.getElementById('form-' + type + '-section').classList.remove('hidden');
-
-            if (!editData && editId && inventoryData[editId]) { editData = inventoryData[editId]; }
-
-            if (editData && editId) {
-                if (type === 'tanah') {
-                    document.getElementById('title-form-tanah').innerText = "Edit Data Inventaris Tanah";
-                    document.getElementById('t-id').value = editId;
-                    document.getElementById('t-hakpengguna').value = editData.hakPengguna || '';
-                    document.getElementById('t-nama').value = editData.nama || '';
-                    document.getElementById('t-jenis').value = editData.jenisTanah || 'Tanah Kas Desa (TKD)';
-                    document.getElementById('t-alamat').value = editData.alamatLokasi || '';
-                    document.getElementById('t-kode').value = editData.kodeBarang || '';
-                    document.getElementById('t-register').value = editData.register || '';
-                    document.getElementById('t-luas').value = editData.luas || '';
-                    document.getElementById('t-luassekarang').value = editData.luasSekarang || '';
-                    document.getElementById('t-batas-u').value = editData.batasUtara || '';
-                    document.getElementById('t-batas-s').value = editData.batasSelatan || '';
-                    document.getElementById('t-batas-t').value = editData.batasTimur || '';
-                    document.getElementById('t-batas-b').value = editData.batasBarat || '';
-                    document.getElementById('t-status').value = editData.kondisi || 'Hak Milik';
-                    document.getElementById('t-nosertifikat').value = editData.noSertifikat || '';
-                    document.getElementById('t-tglsertifikat').value = editData.tglSertifikat || '';
-                    document.getElementById('t-asal').value = editData.asalUsul || 'Pembelian';
-                    document.getElementById('t-tahun').value = editData.tahunPerolehan || '';
-                    document.getElementById('t-harga').value = editData.harga || '';
-                    document.getElementById('t-penggunaan').value = editData.penggunaan || '';
-                    document.getElementById('t-koordinat').value = editData.koordinat || '';
-                    
-                    if(editData.koordinat) {
-                        const mLink = document.getElementById('t-map-link'); mLink.href = `https://maps.google.com/?q=${editData.koordinat}`; mLink.classList.remove('hidden');
-                    }
-                    
-                    const imgFields = ['foto', 'foto2', 'buktiSppt', 'buktiUkur', 'buktiBatas', 'buktiSertifikat'];
-                    const imgIds = ['t-preview', 't-preview-2', 't-preview-sppt', 't-preview-ukur', 't-preview-batas', 't-preview-sertifikat'];
-                    const placeIds = ['t-placeholder', 't-placeholder-2', 't-placeholder-sppt', 't-placeholder-ukur', 't-placeholder-batas', 't-placeholder-sertifikat'];
-                    const base64Ids = ['t-base64', 't-base64-2', 't-base64-sppt', 't-base64-ukur', 't-base64-batas', 't-base64-sertifikat'];
-                    
-                    for(let i=0; i<imgFields.length; i++) {
-                        if (editData[imgFields[i]]) {
-                            document.getElementById(imgIds[i]).src = editData[imgFields[i]];
-                            document.getElementById(imgIds[i]).classList.remove('hidden');
-                            document.getElementById(placeIds[i]).classList.add('hidden');
-                            document.getElementById(base64Ids[i]).value = editData[imgFields[i]];
-                        }
-                    }
-                } else if (type === 'bangunan') {
-                    document.getElementById('title-form-bangunan').innerText = "Edit Data Gedung & Bangunan";
-                    document.getElementById('b-id').value = editId;
-                    ['nama','kode','register','luas','lantai','alamat','konstruksi','kondisi','noimb','tglimb','tahunbuat','tahunbeli','asal','nilai','koordinat'].forEach(k => {
-                        const dbKey = k === 'noimb' ? 'noImb' : k === 'tglimb' ? 'tglImb' : k === 'tahunbuat' ? 'tahunBuat' : k === 'tahunbeli' ? 'tahunBeli' : k === 'asal' ? 'asalUsul' : k === 'kode' ? 'kodeBarang' : k;
-                        document.getElementById('b-'+k).value = editData[dbKey] || '';
-                    });
-                    
-                    if(editData.koordinat) {
-                        const mLink = document.getElementById('b-map-link'); mLink.href = `https://maps.google.com/?q=${editData.koordinat}`; mLink.classList.remove('hidden');
-                    }
-                    if (editData.foto) {
-                        document.getElementById('b-preview').src = editData.foto; document.getElementById('b-preview').classList.remove('hidden');
-                        document.getElementById('b-placeholder').classList.add('hidden'); document.getElementById('b-base64').value = editData.foto;
-                    }
-                } else if (type === 'peralatan') {
-                    document.getElementById('title-form-peralatan').innerText = "Edit Data Peralatan & Mesin";
-                    document.getElementById('p-id').value = editId;
-                    ['nama','merk','kode','register','ukuran','warna','bahan','norangka','nomesin','tahunbuat','tahunbeli','asal','harga','kondisi','lokasi'].forEach(k => {
-                        const dbKey = k === 'kode' ? 'kodeBarang' : k === 'norangka' ? 'noRangka' : k === 'nomesin' ? 'noMesin' : k === 'tahunbuat' ? 'tahunBuat' : k === 'tahunbeli' ? 'tahunBeli' : k === 'asal' ? 'asalUsul' : k;
-                        document.getElementById('p-'+k).value = editData[dbKey] || '';
-                    });
-                    if (editData.foto) {
-                        document.getElementById('p-preview').src = editData.foto; document.getElementById('p-preview').classList.remove('hidden');
-                        document.getElementById('p-placeholder').classList.add('hidden'); document.getElementById('p-base64').value = editData.foto;
-                    }
-                }
-            } else { resetForm(type); }
-        }
-
-        function resetForm(type) {
-            if (type === 'tanah') {
-                document.getElementById('title-form-tanah').innerText = "Formulir KIB A (Tanah)";
-                document.getElementById('form-tanah').reset(); document.getElementById('t-id').value = '';
-                document.getElementById('t-map-link').classList.add('hidden');
-                const imgIds = ['t-preview', 't-preview-2', 't-preview-sppt', 't-preview-ukur', 't-preview-batas', 't-preview-sertifikat'];
-                const placeIds = ['t-placeholder', 't-placeholder-2', 't-placeholder-sppt', 't-placeholder-ukur', 't-placeholder-batas', 't-placeholder-sertifikat'];
-                const base64Ids = ['t-base64', 't-base64-2', 't-base64-sppt', 't-base64-ukur', 't-base64-batas', 't-base64-sertifikat'];
-                for(let i=0; i<imgIds.length; i++) {
-                    document.getElementById(imgIds[i]).classList.add('hidden'); document.getElementById(placeIds[i]).classList.remove('hidden'); document.getElementById(base64Ids[i]).value = '';
-                }
-            } else if (type === 'bangunan') {
-                document.getElementById('title-form-bangunan').innerText = "Formulir KIB C (Bangunan)";
-                document.getElementById('form-bangunan').reset(); document.getElementById('b-id').value = '';
-                document.getElementById('b-map-link').classList.add('hidden');
-                document.getElementById('b-preview').classList.add('hidden'); document.getElementById('b-placeholder').classList.remove('hidden'); document.getElementById('b-base64').value = '';
-            } else if (type === 'peralatan') {
-                document.getElementById('title-form-peralatan').innerText = "Formulir KIB B (Peralatan)";
-                document.getElementById('form-peralatan').reset(); document.getElementById('p-id').value = '';
-                document.getElementById('p-preview').classList.add('hidden'); document.getElementById('p-placeholder').classList.remove('hidden'); document.getElementById('p-base64').value = '';
-            }
-        }
-
-        function openLaporan(kategori) {
-            currentLaporanCategory = kategori;
-            document.querySelectorAll('.section-container').forEach(el => el.classList.add('hidden'));
-            document.getElementById('data-section').classList.remove('hidden');
-            document.getElementById('search-input').value = '';
-
-            const titleUI = document.getElementById('laporan-ui-title');
-            const titlePrint = document.getElementById('print-laporan-title');
-            
-            if(kategori === 'Semua') {
-                titleUI.innerText = "Semua Data Inventaris"; titlePrint.innerText = "Laporan Keseluruhan Inventaris Desa Baleadi";
-            } else if (kategori === 'Lahan') {
-                titleUI.innerText = "Laporan Inventaris Tanah"; titlePrint.innerText = "Buku Inventaris Aset Desa (KIB A) - Tanah";
-            } else if (kategori === 'Bangunan') {
-                titleUI.innerText = "Laporan Gedung / Bangunan"; titlePrint.innerText = "Buku Inventaris Aset Desa (KIB C) - Gedung & Bangunan";
-            } else if (kategori === 'Peralatan') {
-                titleUI.innerText = "Laporan Peralatan & Mesin"; titlePrint.innerText = "Buku Inventaris Aset Desa (KIB B) - Peralatan & Mesin";
-            }
-            filterDataToTable();
-        }
-
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            const bg = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-500' : 'bg-amber-500';
-            const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
-            toast.className = `toast ${bg}`;
-            toast.innerHTML = `<i class="fas ${icon}"></i> <span>${escapeHTML(message)}</span>`;
-            container.appendChild(toast);
-            setTimeout(() => { toast.style.animation = 'fadeOut 0.3s ease-out forwards'; setTimeout(() => toast.remove(), 300); }, 3000);
-        }
-
-        function viewPhoto(url) {
-            if(!url) return;
-            const imgPreview = document.getElementById('modal-img-preview');
-            const pdfPreview = document.getElementById('modal-pdf-preview');
-            
-            if(url.startsWith('data:application/pdf')) {
-                imgPreview.classList.add('hidden'); pdfPreview.src = url; pdfPreview.classList.remove('hidden');
-            } else {
-                pdfPreview.classList.add('hidden'); pdfPreview.src = ''; imgPreview.src = url; imgPreview.classList.remove('hidden');
-            }
-            document.getElementById('photo-modal').classList.remove('hidden');
-        }
-        function closePhotoModal() { document.getElementById('photo-modal').classList.add('hidden'); document.getElementById('modal-pdf-preview').src = ''; }
-
-        function getLocation(inputId) {
-            const kordinatEl = document.getElementById(inputId);
-            kordinatEl.value = "Mencari satelit...";
-            if (!navigator.geolocation) { kordinatEl.value = ""; showToast('Browser tidak mendukung GPS', 'error'); return; }
-            navigator.geolocation.getCurrentPosition((position) => {
-                const coords = `${position.coords.latitude}, ${position.coords.longitude}`; kordinatEl.value = coords;
-                const mapLinkId = inputId === 't-koordinat' ? 't-map-link' : 'b-map-link';
-                const mLink = document.getElementById(mapLinkId); mLink.href = `https://maps.google.com/?q=${coords}`; mLink.classList.remove('hidden');
-                showToast('Lokasi berhasil didapatkan!', 'success');
-            }, (error) => { kordinatEl.value = ''; showToast('Gagal akses GPS. Pastikan Izin Lokasi Aktif.', 'error'); }, { enableHighAccuracy: true });
-        }
-
-        function copyKoordinat(inputId) {
-            const kordinatEl = document.getElementById(inputId);
-            if(!kordinatEl.value || kordinatEl.value.includes("Mencari")) { showToast("Titik koordinat belum ada!", "warning"); return; }
-            const tempInput = document.createElement("input"); tempInput.value = kordinatEl.value; document.body.appendChild(tempInput);
-            tempInput.select(); document.execCommand("copy"); document.body.removeChild(tempInput); showToast("Koordinat disalin!", "success");
-        }
-
-        function previewImage(input, previewId, placeholderId, base64Id) {
-            const file = input.files[0]; if(!file) return;
-            if(file.size > 2 * 1024 * 1024) { showToast('Ukuran file terlalu besar! Maksimal 2MB.', 'error'); input.value = ''; return; }
-            const reader = new FileReader();
-            if(file.type === 'application/pdf') {
-                reader.onload = function(e) {
-                    document.getElementById(previewId).classList.add('hidden');
-                    const placeholder = document.getElementById(placeholderId);
-                    placeholder.innerHTML = `<i class="fas fa-file-pdf text-red-500 text-3xl mb-1"></i><p class="text-xs font-bold text-red-600">PDF Siap</p>`; placeholder.classList.remove('hidden');
-                    document.getElementById(base64Id).value = e.target.result;
-                }
-                reader.readAsDataURL(file);
-            } else {
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 800; const scale = Math.min(MAX_WIDTH / img.width, 1);
-                        canvas.width = img.width * scale; canvas.height = img.height * scale;
-                        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        const b64 = canvas.toDataURL('image/jpeg', 0.6);
-                        document.getElementById(previewId).src = b64; document.getElementById(previewId).classList.remove('hidden');
-                        document.getElementById(placeholderId).classList.add('hidden'); document.getElementById(base64Id).value = b64;
-                    }
-                    img.src = e.target.result;
-                }
-                reader.readAsDataURL(file);
-            }
-        }
-
-        async function submitData(e, kategori) {
-            e.preventDefault();
-            if(!GAS_URL.startsWith('http')) { showToast('Aplikasi dalam mode Pratinjau. Simulasikan Simpan.', 'warning'); e.target.reset(); return; }
-
-            const prefix = kategori === 'Lahan' ? 't' : (kategori === 'Bangunan' ? 'b' : 'p');
-            const editId = document.getElementById(`${prefix}-id`).value;
-            const btn = document.getElementById(`btn-${prefix}-submit`);
-            const oriBtn = btn.innerHTML;
-            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Memproses...`; btn.disabled = true;
-
-            let payloadData = { kategori: kategori, timestamp: new Date().toISOString() };
-
-            if(kategori === 'Lahan') {
-                ['hakpengguna','nama','jenis','alamat','kode','register','luas','luassekarang','batas-u','batas-s','batas-t','batas-b','status','nosertifikat','tglsertifikat','asal','tahun','harga','penggunaan','koordinat'].forEach(k => {
-                    const dbKey = k==='hakpengguna'?'hakPengguna':k==='jenis'?'jenisTanah':k==='alamat'?'alamatLokasi':k==='kode'?'kodeBarang':k==='luassekarang'?'luasSekarang':k==='batas-u'?'batasUtara':k==='batas-s'?'batasSelatan':k==='batas-t'?'batasTimur':k==='batas-b'?'batasBarat':k==='status'?'kondisi':k==='nosertifikat'?'noSertifikat':k==='tglsertifikat'?'tglSertifikat':k==='asal'?'asalUsul':k==='tahun'?'tahunPerolehan':k;
-                    payloadData[dbKey] = document.getElementById(`t-${k}`).value;
-                });
-                ['base64','base64-2','base64-sppt','base64-ukur','base64-batas','base64-sertifikat'].forEach(k => {
-                    const dbKey = k==='base64'?'foto':k==='base64-2'?'foto2':k==='base64-sppt'?'buktiSppt':k==='base64-ukur'?'buktiUkur':k==='base64-batas'?'buktiBatas':k==='base64-sertifikat'?'buktiSertifikat':k;
-                    payloadData[dbKey] = document.getElementById(`t-${k}`).value;
-                });
-            } else if (kategori === 'Bangunan') {
-                ['nama','kode','register','luas','lantai','alamat','konstruksi','kondisi','noimb','tglimb','tahunbuat','tahunbeli','asal','nilai','koordinat','base64'].forEach(k => {
-                    const dbKey = k==='kode'?'kodeBarang':k==='noimb'?'noImb':k==='tglimb'?'tglImb':k==='tahunbuat'?'tahunBuat':k==='tahunbeli'?'tahunBeli':k==='asal'?'asalUsul':k==='base64'?'foto':k;
-                    payloadData[dbKey] = document.getElementById(`b-${k}`).value;
-                });
-            } else if (kategori === 'Peralatan') {
-                ['nama','merk','kode','register','ukuran','warna','bahan','norangka','nomesin','tahunbuat','tahunbeli','asal','harga','kondisi','lokasi','base64'].forEach(k => {
-                    const dbKey = k==='kode'?'kodeBarang':k==='norangka'?'noRangka':k==='nomesin'?'noMesin':k==='tahunbuat'?'tahunBuat':k==='tahunbeli'?'tahunBeli':k==='asal'?'asalUsul':k==='base64'?'foto':k;
-                    payloadData[dbKey] = document.getElementById(`p-${k}`).value;
-                });
-            }
-
-            try {
-                const res = await fetch(GAS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: editId ? "update" : "insert", id: editId, data: payloadData }) });
-                const result = await res.json();
-                if(result.status === 'success') {
-                    showToast(editId ? 'Data berhasil diperbarui!' : 'Data berhasil diamankan!', 'success');
-                    resetForm(kategori === 'Lahan' ? 'tanah' : (kategori === 'Bangunan' ? 'bangunan' : 'peralatan'));
-                    fetchData(); openLaporan(kategori);
-                } else throw new Error(result.message);
-            } catch (error) { showToast('Gagal terhubung ke Server. Pastikan URL GAS benar.', 'error'); } finally { btn.innerHTML = oriBtn; btn.disabled = false; }
-        }
-
-        async function fetchData() {
-            if(!GAS_URL.startsWith('http')) { 
-                document.getElementById('table-body').innerHTML = `<tr><td colspan="15" class="p-8 text-center text-amber-500 font-bold bg-amber-50 border border-amber-200 rounded-xl"><i class="fas fa-exclamation-triangle mb-2 text-2xl"></i><br>Aplikasi dalam mode Pratinjau. Masukkan URL GAS untuk memuat data.</td></tr>`;
-                return; 
-            }
-            document.getElementById('table-body').innerHTML = `<tr><td colspan="15" class="p-8 text-center text-gray-500"><i class="fas fa-spinner fa-spin text-3xl mb-3 text-emerald-500"></i><br><span class="font-bold">Sinkronisasi Database...</span></td></tr>`;
-            try {
-                const res = await fetch(`${GAS_URL}?action=read`);
-                const textData = await res.text();
-                const result = JSON.parse(textData);
-                if(result.status === 'success') {
-                    inventoryData = result.data || {};
-                    filterDataToTable(); updateStats();
-                }
-            } catch (err) {
-                console.warn("Informasi Mode Offline:", err.message);
-                document.getElementById('table-body').innerHTML = `<tr><td colspan="15" class="p-8 text-center text-red-500 font-bold"><i class="fas fa-wifi mb-2 text-2xl"></i><br>Gagal terhubung ke Database. Pastikan pengaturan Deploy GAS diset 'Anyone'.</td></tr>`;
-            }
-        }
-
-        function filterDataToTable() {
-            const searchTerm = document.getElementById('search-input') ? document.getElementById('search-input').value.toLowerCase() : '';
-            const filtered = {};
-            for (const key in inventoryData) {
-                const item = inventoryData[key];
-                if (currentLaporanCategory !== 'Semua' && item.kategori !== currentLaporanCategory) continue;
-                if (searchTerm && !JSON.stringify(item).toLowerCase().includes(searchTerm)) continue;
-                filtered[key] = item;
-            }
-            renderTable(filtered);
-        }
-
-        function renderTable(data) {
-            const tbody = document.getElementById('table-body'); const thead = document.getElementById('table-head'); tbody.innerHTML = ''; 
-            let counter = 1; const keys = Object.keys(data);
-            
-            if (currentLaporanCategory === 'Semua') {
-                thead.innerHTML = `<tr><th class="p-3">No</th><th class="p-3">Kategori</th><th class="p-3">Nama Aset</th><th class="p-3">Kode/Register</th><th class="p-3">Kondisi</th><th class="p-3">Thn Perolehan</th><th class="p-3 text-right">Nilai/Harga (Rp)</th><th class="p-3 text-center no-print">Aksi</th></tr>`;
-            } else if (currentLaporanCategory === 'Lahan') {
-                thead.innerHTML = `<tr><th class="p-3">No</th><th class="p-3">Identitas Aset & Pengguna (Klik Detail)</th><th class="p-3">Kode/Reg</th><th class="p-3">Luas(m²)</th><th class="p-3">Status/Sertifikat</th><th class="p-3">Penggunaan</th><th class="p-3">Asal Usul & Thn</th><th class="p-3 text-right">Harga (Rp)</th><th class="p-3">Lampiran</th><th class="p-3 text-center no-print">Aksi</th></tr>`;
-            } else if (currentLaporanCategory === 'Bangunan') {
-                thead.innerHTML = `<tr><th class="p-3">No</th><th class="p-3">Nama Bangunan (Klik Detail)</th><th class="p-3">Kode/Reg</th><th class="p-3">Kondisi & Konstruksi</th><th class="p-3">Luas & Lantai</th><th class="p-3">Alamat</th><th class="p-3">IMB & Tgl</th><th class="p-3">Asal Usul & Thn</th><th class="p-3 text-right">Nilai (Rp)</th><th class="p-3">Ket (Foto/GPS)</th><th class="p-3 text-center no-print">Aksi</th></tr>`;
-            } else if (currentLaporanCategory === 'Peralatan') {
-                thead.innerHTML = `<tr><th class="p-3">No</th><th class="p-3">Nama Barang (Klik Detail)</th><th class="p-3">Kode/Reg</th><th class="p-3">Merk/Tipe</th><th class="p-3">Bahan/Warna/Ukr</th><th class="p-3">No. Pabrik/Rangka/Msn</th><th class="p-3">Asal Usul & Thn</th><th class="p-3 text-right">Harga (Rp)</th><th class="p-3">Kondisi & Lokasi</th><th class="p-3 text-center no-print">Aksi</th></tr>`;
-            }
-
-            if(keys.length === 0) { tbody.innerHTML = `<tr><td colspan="15" class="p-8 text-center text-gray-500 font-medium">Tidak ada data.</td></tr>`; return; }
-
-            keys.reverse().forEach(key => {
-                const item = data[key];
-                const formatUang = (n) => n ? new Intl.NumberFormat('id-ID').format(n) : '-';
-                
-                let rowHtml = '';
-                if (currentLaporanCategory === 'Semua') {
-                    const badge = (item.kategori === 'Lahan') ? 'bg-emerald-100 text-emerald-700' : (item.kategori === 'Bangunan') ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700';
-                    const harga = item.kategori === 'Bangunan' ? item.nilai : item.harga;
-                    rowHtml = `<td class="p-3 cursor-pointer" onclick="openDetail('${key}')" title="Klik untuk Detail KIB">${counter++}</td>
-                               <td class="p-3 cursor-pointer" onclick="openDetail('${key}')" title="Klik untuk Detail KIB"><span class="px-2 py-1 rounded text-[10px] font-bold ${badge}">${item.kategori}</span></td>
-                               <td class="p-3 font-bold text-emerald-600 hover:text-emerald-800 cursor-pointer" onclick="openDetail('${key}')" title="Klik untuk Detail KIB">${escapeHTML(item.nama)}</td>
-                               <td class="p-3">${escapeHTML(item.kodeBarang)}<br>R: ${escapeHTML(item.register)}</td><td class="p-3">${escapeHTML(item.kondisi)}</td><td class="p-3">${escapeHTML(item.tahunPerolehan || item.tahunBuat || item.tahunBeli)}</td><td class="p-3 text-right font-bold">${formatUang(harga)}</td>`;
-                } else if (currentLaporanCategory === 'Lahan') {
-                    const gps = item.koordinat ? `<a href="https://maps.google.com/?q=${escapeHTML(item.koordinat)}" target="_blank" class="text-blue-500 text-[10px] hover:underline no-print font-bold"><i class="fas fa-map-marker-alt"></i> Peta</a>` : '';
-                    let meds = '';
-                    if(item.foto) meds += `<button onclick="viewPhoto('${item.foto}')" class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded mr-1 mb-1 no-print border border-emerald-200">Ft1</button>`;
-                    if(item.foto2) meds += `<button onclick="viewPhoto('${item.foto2}')" class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded mr-1 mb-1 no-print border border-emerald-200">Ft2</button>`;
-                    if(item.buktiSppt) meds += `<button onclick="viewPhoto('${item.buktiSppt}')" class="text-[10px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded mr-1 mb-1 no-print">SPPT</button>`;
-                    
-                    rowHtml = `<td class="p-3 cursor-pointer hover:bg-emerald-50" onclick="openDetail('${key}')" title="Klik untuk Detail KIB">${counter++}</td>
-                               <td class="p-3 cursor-pointer hover:bg-emerald-50 transition-colors" onclick="openDetail('${key}')" title="Klik untuk lihat Detail & Cetak KIB">
-                                   <div class="font-black text-gray-900 uppercase text-xs flex items-center gap-1 mb-1"><i class="fas fa-user-tag text-emerald-600"></i> ${escapeHTML(item.hakPengguna)}</div>
-                                   <div class="font-bold text-gray-700">${escapeHTML(item.nama)}</div>
-                                   <div class="text-[10px] text-gray-500 mt-1">${escapeHTML(item.jenisTanah)}</div>
-                               </td>
-                               <td class="p-3 font-medium">${escapeHTML(item.kodeBarang)}<br>R: ${escapeHTML(item.register)}</td>
-                               <td class="p-3">Awl: ${escapeHTML(item.luas)}<br>Skr: <span class="font-bold text-emerald-600">${escapeHTML(item.luasSekarang)}</span></td>
-                               <td class="p-3">${escapeHTML(item.kondisi)}<br><span class="text-[10px] font-bold text-gray-500">${escapeHTML(item.noSertifikat)}</span></td>
-                               <td class="p-3">${escapeHTML(item.penggunaan)}</td>
-                               <td class="p-3">${escapeHTML(item.asalUsul)}<br>Th: <span class="font-bold">${escapeHTML(item.tahunPerolehan)}</span></td>
-                               <td class="p-3 text-right font-bold text-gray-800">${formatUang(item.harga)}</td>
-                               <td class="p-3 min-w-[80px]">${meds}<br>${gps}</td>`;
-                } else if (currentLaporanCategory === 'Bangunan') {
-                    rowHtml = `<td class="p-3 cursor-pointer hover:bg-emerald-50" onclick="openDetail('${key}')" title="Klik untuk Detail KIB">${counter++}</td>
-                               <td class="p-3 font-bold text-emerald-600 hover:text-emerald-800 cursor-pointer transition-colors" onclick="openDetail('${key}')" title="Klik untuk lihat Detail & Cetak KIB">${escapeHTML(item.nama)}</td>
-                               <td class="p-3">${escapeHTML(item.kodeBarang)}<br>R: ${escapeHTML(item.register)}</td><td class="p-3">${escapeHTML(item.kondisi)}<br>${escapeHTML(item.konstruksi)}</td>
-                               <td class="p-3">${escapeHTML(item.luas)} m²<br>Lt: ${escapeHTML(item.lantai)}</td><td class="p-3">${escapeHTML(item.alamat)}</td><td class="p-3">${escapeHTML(item.noImb)}<br>${escapeHTML(item.tglImb)}</td>
-                               <td class="p-3">${escapeHTML(item.asalUsul)}<br>Buat: ${escapeHTML(item.tahunBuat)}<br>Beli: ${escapeHTML(item.tahunBeli)}</td><td class="p-3 text-right font-bold">${formatUang(item.nilai)}</td>
-                               <td class="p-3">${item.foto ? `<button onclick="viewPhoto('${item.foto}')" class="text-[10px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded no-print">Foto</button>`:''}${item.koordinat?`<br><a href="https://maps.google.com/?q=${item.koordinat}" target="_blank" class="text-blue-500 text-[10px]">Peta</a>`:''}</td>`;
-                } else if (currentLaporanCategory === 'Peralatan') {
-                    rowHtml = `<td class="p-3 cursor-pointer hover:bg-emerald-50" onclick="openDetail('${key}')" title="Klik untuk Detail KIB">${counter++}</td>
-                               <td class="p-3 font-bold text-emerald-600 hover:text-emerald-800 cursor-pointer transition-colors" onclick="openDetail('${key}')" title="Klik untuk lihat Detail & Cetak KIB">${escapeHTML(item.nama)}</td>
-                               <td class="p-3">${escapeHTML(item.kodeBarang)}<br>R: ${escapeHTML(item.register)}</td><td class="p-3">${escapeHTML(item.merk)}</td>
-                               <td class="p-3">Bhn: ${escapeHTML(item.bahan)}<br>Wrn: ${escapeHTML(item.warna)}<br>Ukr: ${escapeHTML(item.ukuran)}</td><td class="p-3">Rngk: ${escapeHTML(item.noRangka)}<br>Msn: ${escapeHTML(item.noMesin)}</td>
-                               <td class="p-3">${escapeHTML(item.asalUsul)}<br>Buat: ${escapeHTML(item.tahunBuat)}<br>Beli: ${escapeHTML(item.tahunBeli)}</td><td class="p-3 text-right font-bold">${formatUang(item.harga)}</td>
-                               <td class="p-3">${escapeHTML(item.kondisi)}<br>Lok: ${escapeHTML(item.lokasi)}<br>${item.foto ? `<button onclick="viewPhoto('${item.foto}')" class="text-[10px] bg-amber-100 text-amber-700 px-1 py-0.5 rounded mt-1 no-print">Foto</button>`:''}</td>`;
-                }
-
-                const editType = item.kategori === 'Lahan' ? 'tanah' : (item.kategori === 'Bangunan' ? 'bangunan' : 'peralatan');
-                
-                const actHtml = `<td class="p-3 text-center no-print whitespace-nowrap">
-                    <div class="flex items-center justify-center gap-1">
-                        <button onclick="openForm('${editType}', null, '${key}')" class="text-blue-600 hover:text-blue-800 p-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200" title="Ubah/Edit"><i class="fas fa-edit"></i></button>
-                        <button onclick="openDeleteModal('${key}')" class="text-red-500 hover:text-red-700 p-2 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200" title="Hapus"><i class="fas fa-trash-alt"></i></button>
+                const card = `
+                <div onclick="showPublicDetail(${originalIndex})" class="bg-white rounded-xl shadow p-5 cursor-pointer hover:shadow-lg hover:border-teal-500 border border-transparent transition transform hover:-translate-y-1">
+                    <div class="flex items-start">
+                        <div class="bg-teal-100 p-3 rounded-lg text-teal-600 mr-4">
+                            <i class="fas fa-map-marked-alt text-2xl"></i>
+                        </div>
+                        <div class="flex-1">
+                            <!-- NAMA PENGGUNA DITAMPILKAN PALING ATAS, BESAR, DAN TEBAL -->
+                            <h3 class="text-xl font-black text-gray-900 uppercase mb-1">
+                                <i class="fas fa-user-tag text-teal-500 mr-1 text-sm"></i> ${item.nama_hak_pengguna || '-'}
+                            </h3>
+                            <div class="text-md font-medium text-gray-700 mb-2 border-b pb-2">
+                                ${item.nama_tanah || '-'}
+                            </div>
+                            <p class="text-sm text-gray-500 flex items-center mt-2">
+                                <i class="fas fa-map-marker-alt mr-2 text-red-400"></i> ${item.alamat || '-'}
+                            </p>
+                        </div>
                     </div>
-                </td>`;
-                
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-gray-50 border-b border-gray-100 text-[11px] text-gray-700 transition-colors";
-                tr.innerHTML = rowHtml + actHtml; tbody.appendChild(tr);
+                </div>
+                `;
+                container.innerHTML += card;
             });
         }
 
-        function openDetail(key) {
-            currentDetailItem = inventoryData[key]; if(!currentDetailItem) return;
-            
-            document.querySelectorAll('.section-container').forEach(el => el.classList.add('hidden'));
-            document.getElementById('detail-section').classList.remove('hidden');
-            
-            const item = currentDetailItem;
-            document.getElementById('det-title').innerText = `Kartu Inventaris Barang (KIB ${item.kategori === 'Lahan' ? 'A - Tanah' : (item.kategori === 'Bangunan' ? 'C - Gedung & Bangunan' : 'B - Peralatan & Mesin')})`;
-            
-            const content = document.getElementById('detail-content'); let sections = '';
-            
-            const renderBlock = (title, dataArray) => {
-                let html = `<div class="detail-card rounded-lg overflow-hidden border border-gray-300 bg-white mb-2">
-                            <div class="detail-header font-bold text-gray-800 uppercase tracking-wider text-xs px-3 py-1.5 bg-gray-100 border-b border-gray-300">${title}</div>
-                            <div class="flex flex-col">`;
-                dataArray.forEach(row => {
-                    const displayValue = row.isHtml ? row.value : escapeHTML(row.value);
-                    html += `<div class="detail-row flex w-full text-xs border-b border-gray-200 last:border-b-0">
-                                <div class="detail-label p-2 text-gray-700 font-semibold w-1/3 border-r border-gray-200 bg-gray-50">${row.label}</div>
-                                <div class="detail-value p-2 text-gray-900 w-2/3 break-words">${displayValue}</div>
-                             </div>`;
-                });
-                return html + `</div></div>`;
-            };
+        function searchPublicData() {
+            const query = document.getElementById('publicSearchInput').value;
+            renderPublicData(query);
+        }
 
-            const renderImg = (src, label) => {
-                if(!src) return '';
-                if(src.startsWith('data:application/pdf')) {
-                    return `<div class="text-center p-1.5 border border-gray-300 rounded bg-gray-50 break-inside-avoid">
-                                <i class="fas fa-file-pdf text-2xl text-red-500 mb-1 mt-1 cursor-pointer" onclick="viewPhoto('${src}')"></i>
-                                <p class="text-[10px] font-bold text-gray-600 mt-1">${label}</p>
-                            </div>`;
-                }
-                return `<div class="text-center p-1.5 border border-gray-300 rounded bg-gray-50 break-inside-avoid">
-                            <img src="${src}" onclick="viewPhoto('${src}')" class="w-full aspect-[4/3] object-cover rounded border border-gray-200 cursor-pointer no-print">
-                            <img src="${src}" class="hidden print:block w-full aspect-[4/3] object-cover rounded border border-gray-200">
-                            <p class="text-[10px] font-bold text-gray-700 mt-1 uppercase">${label}</p>
-                        </div>`;
-            };
+        function showPublicDetail(index) {
+            const item = dataAset[index];
+            document.getElementById('pub_detail_pengguna').innerText = item.nama_hak_pengguna || '-';
+            document.getElementById('pub_detail_tanah').innerText = item.nama_tanah || '-';
             
-            const buatLinkPeta = (koordinat) => {
-                if (!koordinat || koordinat.trim() === '') return '-';
-                return `${escapeHTML(koordinat)} <a href="https://maps.google.com/?q=${escapeHTML(koordinat)}" target="_blank" class="text-blue-600 hover:underline font-bold ml-2 no-print bg-blue-50 px-2 py-0.5 rounded border border-blue-200">Buka Maps</a>`;
-            };
-            
-            if(item.kategori === 'Lahan') {
-                sections += renderBlock('1. Identitas Aset', [
-                    { label: 'Nama Hak Pengguna', value: `<span class="font-black uppercase text-base">${escapeHTML(item.hakPengguna)}</span>`, isHtml: true },
-                    { label: 'Nama Tanah', value: item.nama }, { label: 'Jenis Tanah', value: item.jenisTanah }, { label: 'Alamat / Lokasi', value: item.alamatLokasi },
-                    { label: 'Nomor Kode Barang', value: item.kodeBarang }, { label: 'Nomor Register', value: item.register }
-                ]);
-                sections += renderBlock('2. Spesifikasi Fisik', [
-                    { label: 'Luas Tanah Awal', value: item.luas ? item.luas + ' m²' : '-' }, { label: 'Luas Tanah Sekarang', value: item.luasSekarang ? item.luasSekarang + ' m²' : '-' },
-                    { label: 'Batas Utara', value: item.batasUtara }, { label: 'Batas Selatan', value: item.batasSelatan }, { label: 'Batas Timur', value: item.batasTimur }, { label: 'Batas Barat', value: item.batasBarat }
-                ]);
-                sections += renderBlock('3. Legalitas / Sertifikat', [ { label: 'Status Hak', value: item.kondisi }, { label: 'Nomor Sertifikat/Girik', value: item.noSertifikat }, { label: 'Tanggal Penerbitan', value: item.tglSertifikat } ]);
-                sections += renderBlock('4. Administrasi', [ { label: 'Asal Usul', value: item.asalUsul }, { label: 'Tahun Perolehan', value: item.tahunPerolehan }, { label: 'Harga Perolehan', value: item.harga ? 'Rp ' + new Intl.NumberFormat('id-ID').format(item.harga) : '-' }, { label: 'Penggunaan', value: item.penggunaan } ]);
-                sections += renderBlock('5. Titik Lokasi', [ { label: 'Titik Koordinat', value: buatLinkPeta(item.koordinat), isHtml: true } ]);
+            const listHtml = `
+                <div class="flex justify-between py-2 border-b"><span class="text-gray-500">Lokasi / Alamat</span> <span class="font-medium text-right">${item.alamat || '-'}</span></div>
+                <div class="flex justify-between py-2 border-b"><span class="text-gray-500">Luas Lahan</span> <span class="font-medium">${item.luas || '-'}</span></div>
+                <div class="flex justify-between py-2 border-b"><span class="text-gray-500">Tahun Pengadaan</span> <span class="font-medium">${item.tahun || '-'}</span></div>
+                <div class="flex justify-between py-2"><span class="text-gray-500">Kondisi Saat Ini</span> 
+                    <span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">${item.kondisi || '-'}</span>
+                </div>
+            `;
+            document.getElementById('pub_detail_list').innerHTML = listHtml;
+            document.getElementById('publicDetailModal').classList.remove('hidden');
+        }
+
+
+        // --- LOGIKA ADMIN (LAPORAN & CETAK) ---
+        function renderAdminTable() {
+            const query = document.getElementById('adminSearchInput').value.toLowerCase();
+            const tbody = document.getElementById('adminTableBody');
+            tbody.innerHTML = '';
+
+            dataAset.forEach((item, index) => {
+                const pengguna = (item.nama_hak_pengguna || "").toLowerCase();
+                const tanah = (item.nama_tanah || "").toLowerCase();
                 
-                let imgGroup = '';
-                const f1 = renderImg(item.foto, 'Foto Utama'); const f2 = renderImg(item.foto2, 'Foto Tambahan'); const s = renderImg(item.buktiSppt, 'Bukti SPPT');
-                if (f1 || f2 || s) imgGroup += `<div class="grid grid-cols-3 gap-2">${f1}${f2}${s}</div>`;
-                if(imgGroup) sections += `<div class="detail-card rounded-lg overflow-hidden border border-gray-300 bg-white mb-2"><div class="detail-header font-bold text-gray-800 uppercase text-xs px-3 py-1.5 bg-gray-100 border-b border-gray-300">6. Lampiran</div><div class="p-3">${imgGroup}</div></div>`;
-            } else if (item.kategori === 'Bangunan') {
-                sections += renderBlock('1. Identitas Aset', [ { label: 'Nama Bangunan', value: item.nama }, { label: 'Nomor Kode Barang', value: item.kodeBarang }, { label: 'Nomor Register', value: item.register } ]);
-                sections += renderBlock('2. Spesifikasi Fisik', [ { label: 'Luas Lantai', value: item.luas ? item.luas + ' m²' : '-' }, { label: 'Jumlah Lantai', value: item.lantai }, { label: 'Letak / Alamat', value: item.alamat } ]);
-                sections += renderBlock('3. Spesifikasi Teknis', [ { label: 'Jenis Konstruksi', value: item.konstruksi }, { label: 'Kondisi Bangunan', value: item.kondisi } ]);
-                sections += renderBlock('4. Administrasi & Lokasi', [ { label: 'Asal Usul', value: item.asalUsul }, { label: 'Nilai (Harga)', value: item.nilai ? 'Rp ' + new Intl.NumberFormat('id-ID').format(item.nilai) : '-' }, { label: 'Titik Koordinat', value: buatLinkPeta(item.koordinat), isHtml: true } ]);
-                if(item.foto) sections += `<div class="detail-card bg-white mb-2"><div class="detail-header font-bold bg-gray-100">5. Foto Bangunan</div><div class="p-3 w-1/2">${renderImg(item.foto, 'Foto')}</div></div>`;
-            } else if (item.kategori === 'Peralatan') {
-                sections += renderBlock('1. Identitas Aset', [ { label: 'Nama Barang', value: item.nama }, { label: 'Merk / Tipe', value: item.merk }, { label: 'Nomor Kode Barang', value: item.kodeBarang } ]);
-                sections += renderBlock('2. Spesifikasi Teknis', [ { label: 'Ukuran', value: item.ukuran }, { label: 'Nomor Rangka', value: item.noRangka }, { label: 'Nomor Mesin', value: item.noMesin } ]);
-                sections += renderBlock('3. Administrasi & Kondisi', [ { label: 'Harga', value: item.harga ? 'Rp ' + new Intl.NumberFormat('id-ID').format(item.harga) : '-' }, { label: 'Kondisi Barang', value: item.kondisi }, { label: 'Lokasi Penempatan', value: item.lokasi } ]);
-                if(item.foto) sections += `<div class="detail-card bg-white mb-2"><div class="detail-header font-bold bg-gray-100">4. Foto Peralatan</div><div class="p-3 w-1/2">${renderImg(item.foto, 'Foto')}</div></div>`;
-            }
-            content.innerHTML = sections;
-        }
+                if (pengguna.includes(query) || tanah.includes(query)) {
+                    const row = `
+                    <tr class="hover:bg-blue-50 transition-colors duration-200">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
+                        
+                        <!-- Kolom Identitas (Klik untuk Buka Detail/Cetak) -->
+                        <td class="px-6 py-4 cursor-pointer" onclick="showAdminDetail(${index})" title="Klik untuk lihat Detail & Cetak KIB">
+                            <div class="font-black text-gray-800 uppercase text-md">${item.nama_hak_pengguna || '-'}</div>
+                            <div class="text-sm text-gray-600 mt-1">${item.nama_tanah || '-'}</div>
+                        </td>
 
-        function openDeleteModal(id) { itemToDelete = id; document.getElementById('delete-modal').classList.remove('hidden'); }
-        function closeDeleteModal() { itemToDelete = null; document.getElementById('delete-modal').classList.add('hidden'); }
-        document.getElementById('confirm-delete-btn').addEventListener('click', async function() {
-            if(!itemToDelete) return; closeDeleteModal();
-            if(!GAS_URL.startsWith('http')) { showToast('Simulasi Hapus Berhasil.', 'success'); return; }
-            showToast('Menghapus data permanen...', 'warning');
-            try {
-                const res = await fetch(GAS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: "delete", id: itemToDelete }) });
-                if((await res.json()).status === 'success') { showToast('Data terhapus!', 'success'); fetchData(); }
-            } catch(e) { showToast('Gagal menghapus data', 'error'); }
-        });
+                        <!-- KOLOM BARU: Lokasi / Alamat -->
+                        <td class="px-6 py-4 whitespace-normal text-sm text-gray-600 w-1/4">
+                            ${item.alamat || '-'}
+                        </td>
 
-        function updateStats() {
-            let lhn = 0, bgn = 0, prl = 0;
-            for(let key in inventoryData) {
-                if(inventoryData[key].kategori === 'Lahan') lhn++; if(inventoryData[key].kategori === 'Bangunan') bgn++; if(inventoryData[key].kategori === 'Peralatan') prl++;
-            }
-            document.getElementById('stat-lahan').innerText = lhn; document.getElementById('stat-bangunan').innerText = bgn; document.getElementById('stat-peralatan').innerText = prl;
-        }
-
-        function printLaporan() { document.getElementById('print-date').innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); window.print(); }
-
-        function exportExcel() {
-            if (!inventoryData || Object.keys(inventoryData).length === 0) { showToast("Tidak ada data untuk diekspor", "warning"); return; }
-            let exportData = []; let counter = 1;
-            const keys = Object.keys(inventoryData).reverse();
-            const searchTerm = document.getElementById('search-input') ? document.getElementById('search-input').value.toLowerCase() : '';
-
-            keys.forEach(key => {
-                const item = inventoryData[key];
-                if (currentLaporanCategory !== 'Semua' && item.kategori !== currentLaporanCategory) return;
-                if (searchTerm && !JSON.stringify(item).toLowerCase().includes(searchTerm)) return;
-
-                if (currentLaporanCategory === 'Semua') {
-                    exportData.push({ "No": counter++, "Kategori": item.kategori, "Nama Aset": item.nama, "Kode Barang": item.kodeBarang, "Nilai/Harga (Rp)": Number(item.kategori === 'Bangunan' ? item.nilai : item.harga) || 0 });
-                } else if (currentLaporanCategory === 'Lahan') {
-                    exportData.push({ "No": counter++, "Nama Pengguna": item.hakPengguna, "Nama Tanah": item.nama, "Jenis": item.jenisTanah, "Luas (m2)": Number(item.luasSekarang) || 0, "Harga": Number(item.harga) || 0 });
-                } else if (currentLaporanCategory === 'Bangunan') {
-                    exportData.push({ "No": counter++, "Nama Bangunan": item.nama, "Kondisi": item.kondisi, "Alamat": item.alamat, "Nilai (Rp)": Number(item.nilai) || 0 });
-                } else if (currentLaporanCategory === 'Peralatan') {
-                    exportData.push({ "No": counter++, "Nama Barang": item.nama, "Merk": item.merk, "Kondisi": item.kondisi, "Lokasi": item.lokasi, "Harga (Rp)": Number(item.harga) || 0 });
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.tahun || '-'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                ${item.kondisi || 'Baik'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button onclick="alert('Fitur Edit (Demontrasi)')" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Edit Data"><i class="fas fa-edit"></i></button>
+                            <button onclick="alert('Fitur Hapus (Demonstrasi)')" class="text-red-600 hover:text-red-900" title="Hapus Data"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    `;
+                    tbody.innerHTML += row;
                 }
             });
-
-            if (exportData.length === 0) { showToast("Tidak ada data", "warning"); return; }
-            try {
-                showToast("Menyiapkan File Excel...", "success");
-                const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Laporan_" + currentLaporanCategory);
-                XLSX.writeFile(wb, `Inventaris_${currentLaporanCategory}_Desa_Baleadi.xlsx`);
-            } catch (error) { showToast("Gagal membuat Excel", "error"); }
         }
 
+        function showAdminDetail(index) {
+            const item = dataAset[index];
+            const tbody = document.getElementById('detailTableBody');
+            
+            // Format Cetak Admin
+            tbody.innerHTML = `
+                <tr><td class="py-3 border-b border-gray-200 font-semibold w-1/3">Nama Hak Pengguna</td>
+                    <td class="py-3 border-b border-gray-200 font-black uppercase text-lg">: ${item.nama_hak_pengguna || '-'}</td></tr>
+                <tr><td class="py-3 border-b border-gray-200 font-semibold">Nama Aset / Tanah</td>
+                    <td class="py-3 border-b border-gray-200">: ${item.nama_tanah || '-'}</td></tr>
+                <tr><td class="py-3 border-b border-gray-200 font-semibold">Lokasi / Alamat</td>
+                    <td class="py-3 border-b border-gray-200">: ${item.alamat || '-'}</td></tr>
+                <tr><td class="py-3 border-b border-gray-200 font-semibold">Tahun Pengadaan</td>
+                    <td class="py-3 border-b border-gray-200">: ${item.tahun || '-'}</td></tr>
+                <tr><td class="py-3 border-b border-gray-200 font-semibold">Luas</td>
+                    <td class="py-3 border-b border-gray-200">: ${item.luas || '-'}</td></tr>
+                <tr><td class="py-3 border-b border-gray-200 font-semibold">Kondisi</td>
+                    <td class="py-3 border-b border-gray-200">: ${item.kondisi || '-'}</td></tr>
+            `;
+            
+            document.getElementById('adminDetailModal').classList.remove('hidden');
+        }
+
+        function printKIB() {
+            window.print();
+        }
+
+        function simpanData() {
+            Swal.fire({
+                icon: 'success',
+                title: 'Tersimpan!',
+                text: 'Data inventaris berhasil ditambahkan.',
+                showConfirmButton: false,
+                timer: 1500
+            });
+            document.getElementById('formKIB').reset();
+        }
+
+        // Inisialisasi awal saat halaman dimuat
         window.onload = function() {
-            if(sessionStorage.getItem('isLoggedIn') === 'true') {
-                showAdminPortal();
-            } else {
-                showPublicPortal();
-            }
-        }
+            renderPublicData();
+        };
     </script>
 </body>
 </html>
