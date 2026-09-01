@@ -1,1115 +1,474 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Inventaris Desa Baleadi</title>
-    
-    <!-- PWA Basic Setup -->
-    <meta name="theme-color" content="#065f46">
-    
-    <!-- Libraries -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        
-        /* Toast Animation */
-        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
-        .toast { padding: 15px 20px; border-radius: 8px; color: white; font-weight: 500; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transform: translateX(120%); transition: transform 0.3s ease; display: flex; align-items: center; gap: 10px; }
-        .toast.show { transform: translateX(0); }
-        .toast.success { background-color: #10b981; }
-        .toast.error { background-color: #ef4444; }
-        .toast.warning { background-color: #f59e0b; }
-        
-        /* Loading Overlay */
-        #loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.8); z-index: 9998; display: flex; justify-content: center; align-items: center; flex-direction: column; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #059669; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Administrasi & Aset Desa Baleadi</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-        /* Print Settings untuk 2 Halaman Presisi */
-        @media print {
-            body * { visibility: hidden; }
-            #detail-modal, #detail-modal * { visibility: visible; }
-            #detail-modal { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: white !important; z-index: 99999; }
-            
-            .print-first-page {
-                height: 26cm !important; 
-                overflow: hidden !important;
-                page-break-after: always;
-                border: none !important;
-                box-shadow: none !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-            .print-page-break {
-                page-break-before: always;
-                height: 26cm !important;
-                position: relative !important;
-                border: none !important;
-                box-shadow: none !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                overflow: hidden !important;
-            }
-            
-            .print\:hidden { display: none !important; }
-            .print\:text-\[16px\] { font-size: 16px !important; }
-            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        }
-    </style>
+  <style>
+    /* STYLE KHUSUS CETAK PDF / PRINT */
+    @media print {
+      aside, header, .no-print, button, input {
+        display: none !important;
+      }
+      body {
+        background: white !important;
+        color: black !important;
+      }
+      main {
+        overflow: visible !important;
+        padding: 0 !important;
+      }
+      .print-header {
+        display: block !important;
+      }
+      .shadow-sm, .border {
+        box-shadow: none !important;
+        border: none !important;
+      }
+      table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 11pt !important;
+      }
+      th, td {
+        border: 1px solid #94a3b8 !important;
+        padding: 6px 10px !important;
+      }
+      .action-col {
+        display: none !important;
+      }
+    }
+    .print-header {
+      display: none;
+    }
+  </style>
 </head>
-<body class="text-gray-800">
+<body class="bg-slate-100 text-slate-800 font-sans antialiased">
 
-    <!-- Komponen Global -->
-    <div id="toast-container"></div>
-    <div id="loading-overlay" class="hidden">
-        <div class="spinner"></div>
-        <p class="mt-4 font-semibold text-gray-700" id="loading-text">Memproses...</p>
-    </div>
-
-    <!-- ============================================== -->
-    <!-- 1. DASHBOARD PUBLIK (BERANDA)                  -->
-    <!-- ============================================== -->
-    <div id="public-dashboard" class="min-h-screen bg-gray-50 flex flex-col hidden">
-        <header class="bg-emerald-700 text-white shadow-md relative overflow-hidden">
-            <div class="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-            <div class="container mx-auto px-4 py-8 relative">
-                <div class="flex justify-between items-start mb-6">
-                    <div class="flex items-center gap-4">
-                        <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center p-2 shadow-lg">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Logo_of_the_Ministry_of_Villages%2C_Development_of_Disadvantaged_Regions_and_Transmigration_of_the_Republic_of_Indonesia.svg/512px-Logo_of_the_Ministry_of_Villages%2C_Development_of_Disadvantaged_Regions_and_Transmigration_of_the_Republic_of_Indonesia.svg.png" alt="Logo" class="w-full object-contain">
-                        </div>
-                        <div>
-                            <h1 class="text-3xl font-extrabold tracking-tight">E-Inventaris</h1>
-                            <p class="text-emerald-100 font-medium">Transparansi Aset Desa Baleadi</p>
-                        </div>
-                    </div>
-                    <button onclick="openLogin()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-full font-medium transition backdrop-blur-sm text-sm border border-white/30 shadow-sm flex items-center gap-2">
-                        <i class="fas fa-lock text-xs"></i> Admin
-                    </button>
-                </div>
-                
-                <div class="max-w-2xl mx-auto mt-8 mb-4">
-                    <div class="relative group">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-emerald-600 transition-colors">
-                            <i class="fas fa-search text-xl"></i>
-                        </div>
-                        <input type="text" id="public-search" oninput="searchPublic()" placeholder="Cari Nama Pengguna, Nama Tanah, No Register..." class="w-full pl-12 pr-4 py-4 rounded-2xl text-gray-800 shadow-xl border-0 focus:ring-4 focus:ring-emerald-400/50 transition-all text-lg font-medium outline-none">
-                    </div>
-                </div>
-            </div>
-        </header>
-
-        <main class="flex-1 container mx-auto px-4 py-8">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-list-ul text-emerald-600 mr-2"></i> Daftar Aset (Terbaru)</h2>
-            </div>
-            
-            <div id="public-results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <!-- Diisi via JavaScript -->
-            </div>
-            
-            <div id="public-empty" class="hidden text-center py-16 bg-white rounded-2xl shadow-sm border border-gray-100">
-                <div class="text-gray-300 mb-4"><i class="fas fa-folder-open text-6xl"></i></div>
-                <h3 class="text-lg font-bold text-gray-700">Data Tidak Ditemukan</h3>
-                <p class="text-gray-500 mt-1">Coba gunakan kata kunci pencarian yang lain.</p>
-            </div>
-        </main>
-        
-        <footer class="bg-gray-800 text-gray-400 py-6 text-center text-sm">
-            <p>&copy; 2026 Pemerintah Desa Baleadi. Transparansi & Akuntabilitas.</p>
-        </footer>
-    </div>
-
-    <!-- ============================================== -->
-    <!-- 2. LOGIN MODAL                                 -->
-    <!-- ============================================== -->
-    <div id="login-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm relative transform transition-all">
-            <button onclick="closeLogin()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-            <div class="text-center mb-6">
-                <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-2xl mx-auto mb-3 shadow-inner">
-                    <i class="fas fa-shield-alt"></i>
-                </div>
-                <h2 class="text-2xl font-bold text-gray-800">Login Admin</h2>
-                <p class="text-sm text-gray-500 mt-1">Masukkan PIN untuk mengelola data</p>
-            </div>
-            <div class="mb-5">
-                <input type="password" id="pin-input" class="w-full p-4 border border-gray-300 rounded-xl text-center text-2xl tracking-widest focus:ring-4 focus:ring-emerald-200 outline-none transition-all" placeholder="•••" onkeyup="if(event.key==='Enter') login()">
-            </div>
-            <button onclick="login()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2">
-                <i class="fas fa-sign-in-alt"></i> Masuk Sistem
-            </button>
+  <div class="flex h-screen overflow-hidden">
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-slate-900 text-slate-300 flex flex-col justify-between shrink-0 no-print">
+      <div>
+        <div class="p-6 border-b border-slate-800 flex items-center space-x-3">
+          <div class="bg-emerald-600 text-white p-2 rounded-lg">
+            <i data-lucide="building-2" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-white text-base leading-tight">Pemdes Baleadi</h1>
+            <p class="text-xs text-slate-400">Sistem Aset Internal</p>
+          </div>
         </div>
-    </div>
 
-    <!-- ============================================== -->
-    <!-- 3. ADMIN DASHBOARD & MENU                      -->
-    <!-- ============================================== -->
-    <div id="app-container" class="flex h-screen overflow-hidden hidden">
-        <!-- Sidebar -->
-        <aside class="w-64 bg-emerald-800 text-white hidden md:flex flex-col shadow-xl z-20">
-            <div class="p-6 text-center border-b border-emerald-700 bg-emerald-900/50">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Logo_of_the_Ministry_of_Villages%2C_Development_of_Disadvantaged_Regions_and_Transmigration_of_the_Republic_of_Indonesia.svg/512px-Logo_of_the_Ministry_of_Villages%2C_Development_of_Disadvantaged_Regions_and_Transmigration_of_the_Republic_of_Indonesia.svg.png" class="h-16 mx-auto mb-3 drop-shadow-md">
-                <h1 class="text-lg font-bold tracking-wide">E-INVENTARIS</h1>
-                <p class="text-xs text-emerald-300">Desa Baleadi</p>
-            </div>
-            <nav class="flex-1 p-4 space-y-2 overflow-y-auto font-medium">
-                <a href="#" onclick="switchMenu('dashboard')" class="menu-item block p-3 rounded-lg hover:bg-emerald-700 transition" data-target="dashboard-section"><i class="fas fa-chart-pie w-6"></i> Dashboard</a>
-                <a href="#" onclick="switchMenu('input')" class="menu-item block p-3 rounded-lg hover:bg-emerald-700 transition" data-target="input-section"><i class="fas fa-edit w-6"></i> Input Data Baru</a>
-                <a href="#" onclick="switchMenu('laporan')" class="menu-item block p-3 rounded-lg hover:bg-emerald-700 transition bg-emerald-900 shadow-inner" data-target="laporan-section"><i class="fas fa-table w-6"></i> Laporan & Cetak</a>
-            </nav>
-            <div class="p-4 border-t border-emerald-700">
-                <button onclick="logout()" class="w-full bg-red-600 hover:bg-red-700 text-white p-2.5 rounded-lg flex items-center justify-center gap-2 transition shadow"><i class="fas fa-sign-out-alt"></i> Keluar</button>
-            </div>
-        </aside>
+        <!-- NAVIGASI -->
+        <nav class="p-4 space-y-1">
+          <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition bg-emerald-600 text-white">
+            <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+            <span>Dashboard</span>
+          </button>
+          <button onclick="switchTab('assets')" id="nav-assets" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition hover:bg-slate-800 hover:text-white">
+            <i data-lucide="box" class="w-5 h-5"></i>
+            <span>Kelola Aset</span>
+          </button>
+        </nav>
+      </div>
 
-        <!-- Mobile Header & Nav -->
-        <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
-            <header class="md:hidden bg-emerald-800 text-white p-4 flex justify-between items-center shadow-md z-20">
-                <div class="flex items-center gap-3">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Logo_of_the_Ministry_of_Villages%2C_Development_of_Disadvantaged_Regions_and_Transmigration_of_the_Republic_of_Indonesia.svg/512px-Logo_of_the_Ministry_of_Villages%2C_Development_of_Disadvantaged_Regions_and_Transmigration_of_the_Republic_of_Indonesia.svg.png" class="h-8">
-                    <h1 class="font-bold">E-Inventaris</h1>
-                </div>
-                <button id="mobile-menu-btn" class="text-xl focus:outline-none p-2"><i class="fas fa-bars"></i></button>
-            </header>
+      <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+        Pemerintah Desa Baleadi &copy; 2026
+      </div>
+    </aside>
 
-            <div id="mobile-sidebar" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden">
-                <aside class="w-64 bg-emerald-800 text-white h-full flex flex-col shadow-2xl transform -translate-x-full transition-transform duration-300" id="mobile-sidebar-content">
-                    <div class="p-4 border-b border-emerald-700 flex justify-between items-center bg-emerald-900/50">
-                        <span class="font-bold">Menu Navigasi</span>
-                        <button id="close-mobile-menu" class="text-xl p-2"><i class="fas fa-times"></i></button>
-                    </div>
-                    <nav class="flex-1 p-4 space-y-2 font-medium">
-                        <a href="#" onclick="switchMenu('dashboard', true)" class="menu-item block p-3 rounded hover:bg-emerald-700"><i class="fas fa-chart-pie w-6"></i> Dashboard</a>
-                        <a href="#" onclick="switchMenu('input', true)" class="menu-item block p-3 rounded hover:bg-emerald-700"><i class="fas fa-edit w-6"></i> Input Data</a>
-                        <a href="#" onclick="switchMenu('laporan', true)" class="menu-item block p-3 rounded hover:bg-emerald-700 bg-emerald-900"><i class="fas fa-table w-6"></i> Laporan</a>
-                    </nav>
-                    <div class="p-4"><button onclick="logout()" class="w-full bg-red-600 p-2 rounded"><i class="fas fa-sign-out-alt"></i> Keluar</button></div>
-                </aside>
-            </div>
-
-            <!-- Area Konten Dinamis -->
-            <div class="flex-1 overflow-y-auto p-4 md:p-6 pb-20 relative">
-                
-                <!-- SECTION: STATISTIK DASHBOARD -->
-                <section id="dashboard-section" class="section-container hidden">
-                    <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Ikhtisar Inventaris</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div class="bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-lg p-6 text-white relative overflow-hidden group">
-                            <i class="fas fa-map absolute -right-4 -bottom-4 text-7xl opacity-20 group-hover:scale-110 transition-transform"></i>
-                            <h3 class="text-emerald-100 font-medium mb-1">Total Lahan KIB A</h3>
-                            <p class="text-4xl font-bold" id="stat-lahan">0</p>
-                        </div>
-                        <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg p-6 text-white relative overflow-hidden group">
-                            <i class="fas fa-building absolute -right-4 -bottom-4 text-7xl opacity-20 group-hover:scale-110 transition-transform"></i>
-                            <h3 class="text-blue-100 font-medium mb-1">Total Bangunan KIB C</h3>
-                            <p class="text-4xl font-bold" id="stat-bangunan">0</p>
-                        </div>
-                        <div class="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg p-6 text-white relative overflow-hidden group">
-                            <i class="fas fa-tractor absolute -right-4 -bottom-4 text-7xl opacity-20 group-hover:scale-110 transition-transform"></i>
-                            <h3 class="text-amber-100 font-medium mb-1">Mesin & Peralatan KIB B</h3>
-                            <p class="text-4xl font-bold" id="stat-peralatan">0</p>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- SECTION: LAPORAN ADMIN -->
-                <section id="laporan-section" class="section-container">
-                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 border-b pb-4">
-                        <h2 class="text-2xl font-bold text-gray-800">Laporan & Basis Data</h2>
-                        <div class="flex gap-2 w-full md:w-auto">
-                            <button onclick="fetchData()" class="flex-1 md:flex-none bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-4 py-2 rounded-lg font-medium transition flex items-center justify-center gap-2 shadow-sm border border-emerald-200"><i class="fas fa-sync-alt"></i> Segarkan</button>
-                            <button onclick="exportExcel()" class="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition flex items-center justify-center gap-2 shadow"><i class="fas fa-file-excel"></i> Export Excel</button>
-                        </div>
-                    </div>
-
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div class="flex flex-wrap border-b border-gray-200 bg-gray-50">
-                            <button onclick="openLaporan('Lahan')" id="tab-lahan" class="tab-btn flex-1 py-4 px-4 font-bold text-emerald-700 border-b-2 border-emerald-600 bg-white"><i class="fas fa-map mr-2"></i> KIB A (Tanah)</button>
-                            <button onclick="openLaporan('Bangunan')" id="tab-bangunan" class="tab-btn flex-1 py-4 px-4 font-bold text-gray-500 hover:text-gray-700 border-b-2 border-transparent"><i class="fas fa-building mr-2"></i> KIB C (Bangunan)</button>
-                            <button onclick="openLaporan('Peralatan')" id="tab-peralatan" class="tab-btn flex-1 py-4 px-4 font-bold text-gray-500 hover:text-gray-700 border-b-2 border-transparent"><i class="fas fa-tractor mr-2"></i> KIB B (Peralatan)</button>
-                        </div>
-                        
-                        <div class="p-4 border-b border-gray-100 bg-white">
-                            <div class="relative max-w-md">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-search text-gray-400"></i></div>
-                                <input type="text" id="search-input" oninput="searchData()" placeholder="Cari Nama, Register, Kode Barang..." class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
-                            </div>
-                        </div>
-
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm text-left whitespace-nowrap">
-                                <thead class="text-xs text-gray-700 uppercase bg-gray-100 border-b">
-                                    <tr>
-                                        <th class="p-3 text-center">No</th>
-                                        <th class="p-3">Nama Aset / Pengguna</th>
-                                        <th class="p-3 text-center">Kode Barang</th>
-                                        <th class="p-3 text-center">Register</th>
-                                        <th class="p-3">Jenis/Merk</th>
-                                        <th class="p-3">Lokasi</th>
-                                        <th class="p-3 text-center">Tahun</th>
-                                        <th class="p-3 text-right">Nilai (Rp)</th>
-                                        <th class="p-3 text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="table-body" class="divide-y divide-gray-200 bg-white">
-                                    <!-- Terisi via JS -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- SECTION: MENU INPUT DATA -->
-                <section id="input-section" class="section-container hidden">
-                    <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Pilih Kategori Input Baru</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div onclick="openForm('tanah')" class="bg-white hover:bg-emerald-50 border-2 border-gray-200 hover:border-emerald-400 rounded-xl p-8 text-center cursor-pointer transition group shadow-sm">
-                            <div class="w-20 h-20 mx-auto bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform"><i class="fas fa-map-marked-alt"></i></div>
-                            <h3 class="text-xl font-bold text-gray-800">KIB A (Tanah)</h3>
-                            <p class="text-gray-500 text-sm mt-2">Tanah Desa, Bengkok, Makam, dll</p>
-                        </div>
-                        <div onclick="openForm('bangunan')" class="bg-white hover:bg-blue-50 border-2 border-gray-200 hover:border-blue-400 rounded-xl p-8 text-center cursor-pointer transition group shadow-sm">
-                            <div class="w-20 h-20 mx-auto bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform"><i class="fas fa-building"></i></div>
-                            <h3 class="text-xl font-bold text-gray-800">KIB C (Bangunan)</h3>
-                            <p class="text-gray-500 text-sm mt-2">Gedung, Balai, Monumen, dll</p>
-                        </div>
-                        <div onclick="openForm('peralatan')" class="bg-white hover:bg-amber-50 border-2 border-gray-200 hover:border-amber-400 rounded-xl p-8 text-center cursor-pointer transition group shadow-sm">
-                            <div class="w-20 h-20 mx-auto bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform"><i class="fas fa-tractor"></i></div>
-                            <h3 class="text-xl font-bold text-gray-800">KIB B (Peralatan)</h3>
-                            <p class="text-gray-500 text-sm mt-2">Kendaraan, Mesin, Meubelair</p>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- ============================================== -->
-                <!-- FORM: LAHAN (KIB A)                            -->
-                <!-- ============================================== -->
-                <section id="form-tanah-section" class="section-container hidden">
-                    <button onclick="switchMenu('input')" class="mb-4 text-emerald-600 hover:text-emerald-800 font-medium"><i class="fas fa-arrow-left"></i> Kembali ke Menu Input</button>
-                    <form id="form-tanah" onsubmit="submitData(event, 'Lahan')" class="bg-white rounded-xl shadow p-6 max-w-4xl border border-gray-200">
-                        <h2 class="text-2xl font-bold mb-6 border-b pb-2 text-emerald-800" id="title-form-tanah">Input Data Inventaris Tanah (KIB A)</h2>
-                        <input type="hidden" id="t-id">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Kiri -->
-                            <div class="space-y-4">
-                                <h3 class="font-bold text-gray-700 bg-gray-100 p-2 rounded">Identitas & Spesifikasi</h3>
-                                <div><label class="block text-sm font-medium mb-1">Nama Hak Pengguna</label><input type="text" id="t-hakpengguna" class="w-full p-2 border rounded focus:ring-emerald-500" required></div>
-                                <div><label class="block text-sm font-medium mb-1">Nama Tanah</label><input type="text" id="t-nama" class="w-full p-2 border rounded" required></div>
-                                <div><label class="block text-sm font-medium mb-1">Jenis Tanah</label><select id="t-jenis" class="w-full p-2 border rounded" required><option value="">Pilih Jenis...</option><option value="Tanah Bengkok">Tanah Bengkok</option><option value="Tanah Kas Desa">Tanah Kas Desa</option><option value="Tanah Makam">Tanah Makam</option><option value="Lainnya">Lainnya</option></select></div>
-                                <div><label class="block text-sm font-medium mb-1">Alamat / Lokasi Lengkap</label><textarea id="t-alamat" rows="2" class="w-full p-2 border rounded"></textarea></div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="block text-sm font-medium mb-1">Luas Awal (m²)</label><input type="number" id="t-luas" class="w-full p-2 border rounded"></div>
-                                    <div><label class="block text-sm font-medium mb-1">Luas Skrg (m²)</label><input type="number" id="t-luassekarang" class="w-full p-2 border rounded"></div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="block text-sm text-gray-500 mb-1">Batas Utara</label><input type="text" id="t-batas-u" class="w-full p-1.5 text-sm border rounded"></div>
-                                    <div><label class="block text-sm text-gray-500 mb-1">Batas Selatan</label><input type="text" id="t-batas-s" class="w-full p-1.5 text-sm border rounded"></div>
-                                    <div><label class="block text-sm text-gray-500 mb-1">Batas Timur</label><input type="text" id="t-batas-t" class="w-full p-1.5 text-sm border rounded"></div>
-                                    <div><label class="block text-sm text-gray-500 mb-1">Batas Barat</label><input type="text" id="t-batas-b" class="w-full p-1.5 text-sm border rounded"></div>
-                                </div>
-                            </div>
-                            
-                            <!-- Kanan -->
-                            <div class="space-y-4">
-                                <h3 class="font-bold text-gray-700 bg-gray-100 p-2 rounded">Administrasi & Legalitas</h3>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="block text-sm font-medium mb-1">Kode Barang</label><input type="text" id="t-kode" class="w-full p-2 border rounded"></div>
-                                    <div><label class="block text-sm font-medium mb-1">Register</label><input type="text" id="t-register" class="w-full p-2 border rounded"></div>
-                                </div>
-                                <div><label class="block text-sm font-medium mb-1">Status Hak</label><input type="text" id="t-status" placeholder="Misal: Hak Milik / HP" class="w-full p-2 border rounded"></div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="block text-sm font-medium mb-1">No Sertifikat</label><input type="text" id="t-nosertifikat" class="w-full p-2 border rounded"></div>
-                                    <div><label class="block text-sm font-medium mb-1">Tgl Sertifikat</label><input type="date" id="t-tglsertifikat" class="w-full p-2 border rounded"></div>
-                                </div>
-                                <div><label class="block text-sm font-medium mb-1">Asal Usul</label><input type="text" id="t-asal" class="w-full p-2 border rounded" placeholder="Misal: Bantuan Provinsi"></div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="block text-sm font-medium mb-1">Tahun Perolehan</label><input type="number" id="t-tahun" class="w-full p-2 border rounded"></div>
-                                    <div><label class="block text-sm font-medium mb-1">Harga (Rp)</label><input type="number" id="t-harga" class="w-full p-2 border rounded"></div>
-                                </div>
-                                <div><label class="block text-sm font-medium mb-1">Penggunaan</label><input type="text" id="t-penggunaan" class="w-full p-2 border rounded" placeholder="Misal: Disewakan / Digarap"></div>
-                                <div>
-                                    <label class="block text-sm font-medium mb-1 flex justify-between">Titik Koordinat (Peta) <a href="https://maps.google.com" target="_blank" class="text-blue-500 hover:underline text-xs"><i class="fas fa-external-link-alt"></i> Buka Maps</a></label>
-                                    <input type="text" id="t-koordinat" class="w-full p-2 border rounded" placeholder="-6.953531, 110.824245">
-                                    <button type="button" onclick="getLocation('t-koordinat')" class="mt-1 w-full bg-gray-200 hover:bg-gray-300 text-gray-700 py-1.5 rounded text-sm"><i class="fas fa-crosshairs"></i> Deteksi Lokasi GPS</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Foto Lahan (6 slot) -->
-                        <div class="mt-6 pt-4 border-t">
-                            <h3 class="font-bold text-gray-700 bg-gray-100 p-2 rounded mb-4">Lampiran Visual & Dokumen</h3>
-                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                <div><label class="block text-sm font-bold mb-1 text-center">Foto Utama</label><div class="border-2 border-dashed border-gray-300 rounded-lg p-2 text-center relative hover:bg-gray-50 cursor-pointer overflow-hidden aspect-[4/3] flex items-center justify-center group" onclick="document.getElementById('t-file').click()"><img id="t-preview" class="hidden w-full h-full object-cover"><div id="t-placeholder" class="text-gray-400 group-hover:text-emerald-500"><i class="fas fa-camera text-2xl mb-1 block"></i><span class="text-xs">Klik Upload</span></div><input type="file" id="t-file" accept="image/*" class="hidden" onchange="compressAndPreview(this, 't-preview', 't-base64')"><input type="hidden" id="t-base64"></div></div>
-                                <div><label class="block text-sm font-bold mb-1 text-center">Foto Tambahan</label><div class="border-2 border-dashed border-gray-300 rounded-lg p-2 text-center relative hover:bg-gray-50 cursor-pointer overflow-hidden aspect-[4/3] flex items-center justify-center group" onclick="document.getElementById('t-file-2').click()"><img id="t-preview-2" class="hidden w-full h-full object-cover"><div id="t-placeholder-2" class="text-gray-400 group-hover:text-emerald-500"><i class="fas fa-image text-2xl mb-1 block"></i><span class="text-xs">Klik Upload</span></div><input type="file" id="t-file-2" accept="image/*" class="hidden" onchange="compressAndPreview(this, 't-preview-2', 't-base64-2')"><input type="hidden" id="t-base64-2"></div></div>
-                                <div><label class="block text-sm font-bold mb-1 text-center text-red-600">Bukti SPPT</label><div class="border-2 border-dashed border-red-200 bg-red-50 rounded-lg p-2 text-center relative cursor-pointer overflow-hidden aspect-[4/3] flex items-center justify-center group" onclick="document.getElementById('t-file-sppt').click()"><img id="t-preview-sppt" class="hidden w-full h-full object-cover"><div id="t-placeholder-sppt" class="text-red-400 group-hover:text-red-600"><i class="fas fa-file-invoice text-2xl mb-1 block"></i><span class="text-xs">Upload SPPT</span></div><input type="file" id="t-file-sppt" accept="image/*" class="hidden" onchange="compressAndPreview(this, 't-preview-sppt', 't-base64-sppt')"><input type="hidden" id="t-base64-sppt"></div></div>
-                                <div><label class="block text-sm font-bold mb-1 text-center text-blue-600">Surat Ukur</label><div class="border-2 border-dashed border-blue-200 bg-blue-50 rounded-lg p-2 text-center relative cursor-pointer overflow-hidden aspect-[4/3] flex items-center justify-center group" onclick="document.getElementById('t-file-ukur').click()"><img id="t-preview-ukur" class="hidden w-full h-full object-cover"><div id="t-placeholder-ukur" class="text-blue-400 group-hover:text-blue-600"><i class="fas fa-ruler-combined text-2xl mb-1 block"></i><span class="text-xs">Upload Ukur</span></div><input type="file" id="t-file-ukur" accept="image/*" class="hidden" onchange="compressAndPreview(this, 't-preview-ukur', 't-base64-ukur')"><input type="hidden" id="t-base64-ukur"></div></div>
-                                <div><label class="block text-sm font-bold mb-1 text-center text-amber-600">Persetujuan Batas</label><div class="border-2 border-dashed border-amber-200 bg-amber-50 rounded-lg p-2 text-center relative cursor-pointer overflow-hidden aspect-[4/3] flex items-center justify-center group" onclick="document.getElementById('t-file-batas').click()"><img id="t-preview-batas" class="hidden w-full h-full object-cover"><div id="t-placeholder-batas" class="text-amber-400 group-hover:text-amber-600"><i class="fas fa-users text-2xl mb-1 block"></i><span class="text-xs">Upload Batas</span></div><input type="file" id="t-file-batas" accept="image/*" class="hidden" onchange="compressAndPreview(this, 't-preview-batas', 't-base64-batas')"><input type="hidden" id="t-base64-batas"></div></div>
-                                <div><label class="block text-sm font-bold mb-1 text-center text-purple-600">Sertifikat Resmi</label><div class="border-2 border-dashed border-purple-200 bg-purple-50 rounded-lg p-2 text-center relative cursor-pointer overflow-hidden aspect-[4/3] flex items-center justify-center group" onclick="document.getElementById('t-file-sertifikat').click()"><img id="t-preview-sertifikat" class="hidden w-full h-full object-cover"><div id="t-placeholder-sertifikat" class="text-purple-400 group-hover:text-purple-600"><i class="fas fa-certificate text-2xl mb-1 block"></i><span class="text-xs">Upload Sertifikat</span></div><input type="file" id="t-file-sertifikat" accept="image/*" class="hidden" onchange="compressAndPreview(this, 't-preview-sertifikat', 't-base64-sertifikat')"><input type="hidden" id="t-base64-sertifikat"></div></div>
-                            </div>
-                        </div>
-
-                        <div class="mt-8 flex justify-end gap-3">
-                            <button type="button" onclick="resetForm('tanah')" class="px-5 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded font-medium">Reset</button>
-                            <button type="submit" id="btn-t-submit" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold shadow flex items-center gap-2"><i class="fas fa-save"></i> Simpan Data</button>
-                        </div>
-                    </form>
-                </section>
-
-                <!-- ============================================== -->
-                <!-- FORM: BANGUNAN (KIB C)                         -->
-                <!-- ============================================== -->
-                <section id="form-bangunan-section" class="section-container hidden">
-                    <button onclick="switchMenu('input')" class="mb-4 text-emerald-600 hover:text-emerald-800 font-medium"><i class="fas fa-arrow-left"></i> Kembali ke Menu Input</button>
-                    <form id="form-bangunan" onsubmit="submitData(event, 'Bangunan')" class="bg-white rounded-xl shadow p-6 max-w-4xl border border-gray-200">
-                        <h2 class="text-2xl font-bold mb-6 border-b pb-2 text-blue-800" id="title-form-bangunan">Input Data Bangunan (KIB C)</h2>
-                        <input type="hidden" id="b-id">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="space-y-4">
-                                <h3 class="font-bold text-gray-700 bg-gray-100 p-2 rounded">Identitas Bangunan</h3>
-                                <div><label class="block text-sm font-medium mb-1">Nama Bangunan</label><input type="text" id="b-nama" class="w-full p-2 border rounded" required></div>
-                                <div><label class="block text-sm font-medium mb-1">Konstruksi</label><input type="text" id="b-konstruksi" class="w-full p-2 border rounded" placeholder="Misal: Beton / Kayu"></div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="block text-sm font-medium mb-1">Luas (m²)</label><input type="number" id="b-luas" class="w-full p-2 border rounded"></div>
-                                    <div><label class="block text-sm font-medium mb-1">Lantai Ke-</label><input type="number" id="b-lantai" class="w-full p-2 border rounded" placeholder="1"></div>
-                                </div>
-                                <div><label class="block text-sm font-medium mb-1">Alamat Lengkap</label><textarea id="b-alamat" rows="2" class="w-full p-2 border rounded"></textarea></div>
-                                <div><label class="block text-sm font-medium mb-1">Kondisi</label><select id="b-kondisi" class="w-full p-2 border rounded"><option value="Baik">Baik</option><option value="Kurang Baik">Kurang Baik</option><option value="Rusak Berat">Rusak Berat</option></select></div>
-                            </div>
-                            
-                            <div class="space-y-4">
-                                <h3 class="font-bold text-gray-700 bg-gray-100 p-2 rounded">Administrasi & Legalitas</h3>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="block text-sm font-medium mb-1">Kode Barang</label><input type="text" id="b-kode" class="w-full p-2 border rounded"></div>
-                                    <div><label class="block text-sm font-medium mb-1">Register</label><input type="text" id="b-register" class="w-full p-2 border rounded"></div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="block text-sm font-medium mb-1">Tahun Buat</label><input type="number" id="b-tahunbuat" class="w-full p-2 border rounded"></div>
-                                    <div><label class="block text-sm font-medium mb-1">Tahun Beli</label><input type="number" id="b-tahunbeli" class="w-full p-2 border rounded"></div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="block text-sm font-medium mb-1">No IMB</label><input type="text" id="b-noimb" class="w-full p-2 border rounded"></div>
-                                    <div><label class="block text-sm font-medium mb-1">Tgl IMB</label><input type="date" id="b-tglimb" class="w-full p-2 border rounded"></div>
-                                </div>
-                                <div><label class="block text-sm font-medium mb-1">Asal Usul</label><input type="text" id="b-asal" class="w-full p-2 border rounded"></div>
-                                <div><label class="block text-sm font-medium mb-1">Nilai Bangunan (Rp)</label><input type="number" id="b-nilai" class="w-full p-2 border rounded"></div>
-                                <div><label class="block text-sm font-medium mb-1">Koordinat GPS</label><input type="text" id="b-koordinat" class="w-full p-2 border rounded text-sm"></div>
-                            </div>
-                        </div>
-
-                        <div class="mt-6 pt-4 border-t">
-                            <h3 class="font-bold text-gray-700 bg-gray-100 p-2 rounded mb-4">Lampiran Visual</h3>
-                            <div class="w-48"><label class="block text-sm font-bold mb-1 text-center">Foto Bangunan</label><div class="border-2 border-dashed border-gray-300 rounded-lg p-2 text-center relative hover:bg-gray-50 cursor-pointer overflow-hidden aspect-[4/3] flex items-center justify-center group" onclick="document.getElementById('b-file').click()"><img id="b-preview" class="hidden w-full h-full object-cover"><div id="b-placeholder" class="text-gray-400 group-hover:text-blue-500"><i class="fas fa-camera text-2xl mb-1 block"></i><span class="text-xs">Klik Upload</span></div><input type="file" id="b-file" accept="image/*" class="hidden" onchange="compressAndPreview(this, 'b-preview', 'b-base64')"><input type="hidden" id="b-base64"></div></div>
-                        </div>
-
-                        <div class="mt-8 flex justify-end gap-3">
-                            <button type="button" onclick="resetForm('bangunan')" class="px-5 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded font-medium">Reset</button>
-                            <button type="submit" id="btn-b-submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold shadow flex items-center gap-2"><i class="fas fa-save"></i> Simpan Data</button>
-                        </div>
-                    </form>
-                </section>
-
-                <!-- ============================================== -->
-                <!-- FORM: PERALATAN (KIB B)                        -->
-                <!-- ============================================== -->
-                <section id="form-peralatan-section" class="section-container hidden">
-                    <button onclick="switchMenu('input')" class="mb-4 text-emerald-600 hover:text-emerald-800 font-medium"><i class="fas fa-arrow-left"></i> Kembali ke Menu Input</button>
-                    <form id="form-peralatan" onsubmit="submitData(event, 'Peralatan')" class="bg-white rounded-xl shadow p-6 max-w-4xl border border-gray-200">
-                        <h2 class="text-2xl font-bold mb-6 border-b pb-2 text-amber-800" id="title-form-peralatan">Input Data Peralatan (KIB B)</h2>
-                        <input type="hidden" id="p-id">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="space-y-4">
-                                <h3 class="font-bold text-gray-700 bg-gray-100 p-2 rounded">Spesifikasi Alat/Mesin</h3>
-                                <div><label class="block text-sm font-medium mb-1">Nama Barang</label><input type="text" id="p-nama" class="w-full p-2 border rounded" required></div>
-                                <div><label class="block text-sm font-medium mb-1">Merk / Tipe</label><input type="text" id="p-merk" class="w-full p-2 border rounded"></div>
-                                <div class="grid grid-cols-3 gap-2">
-                                    <div><label class="block text-sm font-medium mb-1 text-xs">Ukuran</label><input type="text" id="p-ukuran" class="w-full p-2 border rounded text-sm"></div>
-                                    <div><label class="block text-sm font-medium mb-1 text-xs">Bahan</label><input type="text" id="p-bahan" class="w-full p-2 border rounded text-sm"></div>
-                                    <div><label class="block text-sm font-medium mb-1 text-xs">Warna</label><input type="text" id="p-warna" class="w-full p-2 border rounded text-sm"></div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="block text-sm font-medium mb-1">No Rangka</label><input type="text" id="p-norangka" class="w-full p-2 border rounded text-sm"></div>
-                                    <div><label class="block text-sm font-medium mb-1">No Mesin</label><input type="text" id="p-nomesin" class="w-full p-2 border rounded text-sm"></div>
-                                </div>
-                                <div><label class="block text-sm font-medium mb-1">Kondisi</label><select id="p-kondisi" class="w-full p-2 border rounded"><option value="B">Baik (B)</option><option value="KB">Kurang Baik (KB)</option><option value="RB">Rusak Berat (RB)</option></select></div>
-                            </div>
-                            
-                            <div class="space-y-4">
-                                <h3 class="font-bold text-gray-700 bg-gray-100 p-2 rounded">Administrasi & Legalitas</h3>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="block text-sm font-medium mb-1">Kode Barang</label><input type="text" id="p-kode" class="w-full p-2 border rounded"></div>
-                                    <div><label class="block text-sm font-medium mb-1">Register</label><input type="text" id="p-register" class="w-full p-2 border rounded"></div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="block text-sm font-medium mb-1">Tahun Buat</label><input type="number" id="p-tahunbuat" class="w-full p-2 border rounded"></div>
-                                    <div><label class="block text-sm font-medium mb-1">Tahun Beli</label><input type="number" id="p-tahunbeli" class="w-full p-2 border rounded"></div>
-                                </div>
-                                <div><label class="block text-sm font-medium mb-1">Asal Usul</label><input type="text" id="p-asal" class="w-full p-2 border rounded"></div>
-                                <div><label class="block text-sm font-medium mb-1">Harga (Rp)</label><input type="number" id="p-harga" class="w-full p-2 border rounded"></div>
-                                <div><label class="block text-sm font-medium mb-1">Lokasi / Penanggung Jawab</label><input type="text" id="p-lokasi" class="w-full p-2 border rounded" placeholder="Misal: Ruang Kades / Bp. Budi"></div>
-                            </div>
-                        </div>
-
-                        <div class="mt-6 pt-4 border-t">
-                            <h3 class="font-bold text-gray-700 bg-gray-100 p-2 rounded mb-4">Lampiran Visual</h3>
-                            <div class="w-48"><label class="block text-sm font-bold mb-1 text-center">Foto Barang</label><div class="border-2 border-dashed border-gray-300 rounded-lg p-2 text-center relative hover:bg-gray-50 cursor-pointer overflow-hidden aspect-[4/3] flex items-center justify-center group" onclick="document.getElementById('p-file').click()"><img id="p-preview" class="hidden w-full h-full object-cover"><div id="p-placeholder" class="text-gray-400 group-hover:text-amber-500"><i class="fas fa-camera text-2xl mb-1 block"></i><span class="text-xs">Klik Upload</span></div><input type="file" id="p-file" accept="image/*" class="hidden" onchange="compressAndPreview(this, 'p-preview', 'p-base64')"><input type="hidden" id="p-base64"></div></div>
-                        </div>
-
-                        <div class="mt-8 flex justify-end gap-3">
-                            <button type="button" onclick="resetForm('peralatan')" class="px-5 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded font-medium">Reset</button>
-                            <button type="submit" id="btn-p-submit" class="px-6 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded font-bold shadow flex items-center gap-2"><i class="fas fa-save"></i> Simpan Data</button>
-                        </div>
-                    </form>
-                </section>
-            </div>
-        </main>
-    </div>
-
-    <!-- MODAL DETAIL (PRINT & PUBLIK) -->
-    <div id="detail-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm z-50 hidden overflow-y-auto print:bg-white">
-        <div class="min-h-screen flex items-start justify-center p-4 print:p-0">
-            <div id="detail-content" class="w-full max-w-4xl my-8 print:my-0">
-                <!-- Konten dinamis -->
-            </div>
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 overflow-y-auto bg-slate-50">
+      <!-- HEADER APPLIKASI -->
+      <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10 no-print">
+        <h2 id="page-title" class="text-xl font-bold text-slate-800">Dashboard Admin</h2>
+        <div class="flex items-center space-x-3">
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span> Mode Admin Active
+          </span>
         </div>
-    </div>
+      </header>
 
-    <!-- MODAL HAPUS -->
-    <div id="delete-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm text-center transform scale-100 transition-transform">
-            <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4"><i class="fas fa-exclamation-triangle"></i></div>
-            <h3 class="text-xl font-bold mb-2">Hapus Data?</h3>
-            <p class="text-gray-500 mb-6 text-sm">Data yang dihapus tidak dapat dikembalikan lagi. Yakin ingin melanjutkan?</p>
-            <div class="flex gap-3 justify-center">
-                <button onclick="closeDeleteModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded font-medium text-gray-800 transition">Batal</button>
-                <button id="confirm-delete-btn" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-medium text-white shadow transition">Ya, Hapus!</button>
-            </div>
+      <div class="p-8">
+        <!-- HEADER KOP LAPORAN (HANYA MUNCUL SAAT DICETAK) -->
+        <div class="print-header mb-6 text-center border-b border-slate-300 pb-4">
+          <h1 class="text-xl font-bold uppercase tracking-wide">Pemerintah Desa Baleadi</h1>
+          <h2 class="text-lg font-semibold text-slate-700">Laporan Inventarisasi & Aset Desa</h2>
+          <p class="text-xs text-slate-500 mt-1" id="printDate"></p>
         </div>
-    </div>
 
-    <!-- MODAL FOTO FULLSCREEN -->
-    <div id="photo-modal" class="fixed inset-0 bg-black/90 z-[110] hidden flex flex-col items-center justify-center p-4" onclick="closePhoto()">
-        <button class="absolute top-4 right-4 text-white hover:text-red-500 text-3xl"><i class="fas fa-times"></i></button>
-        <img id="photo-fullscreen" class="max-w-full max-h-[90vh] object-contain rounded shadow-2xl border border-gray-700" onclick="event.stopPropagation()">
-    </div>
-
-    <!-- ============================================== -->
-    <!-- LOGIKA JAVASCRIPT                              -->
-    <!-- ============================================== -->
-    <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbz1_gFhAUQUVuCA_D4zcQlI-326ctS2RnftEj2VE0lr03BPJ5GHZfolKSOAyGWBQxg/exec"; 
-        
-        let inventoryData = {};
-        let currentLaporanCategory = 'Lahan';
-        let itemToDelete = null;
-
-        // Utility: Notifikasi
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            let icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-times-circle' : 'fa-exclamation-circle');
-            toast.innerHTML = `<i class="fas ${icon} text-xl"></i><span>${message}</span>`;
-            container.appendChild(toast);
-            setTimeout(() => toast.classList.add('show'), 10);
-            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
-        }
-
-        // Utility: Sanitasi Teks
-        function escapeHTML(str) {
-            if(!str) return '';
-            return str.toString().replace(/[&<>'"]/g, tag => ({'&': '&amp;','<': '&lt;','>': '&gt;',"'": '&#39;','"': '&quot;'}[tag]));
-        }
-
-        // --- AUTH & NAVIGASI ---
-        function checkLogin() {
-            if(sessionStorage.getItem('isLoggedIn') === 'true') {
-                document.getElementById('public-dashboard').classList.add('hidden');
-                document.getElementById('app-container').classList.remove('hidden');
-            } else {
-                document.getElementById('public-dashboard').classList.remove('hidden');
-                document.getElementById('app-container').classList.add('hidden');
-            }
-            fetchData(); 
-        }
-
-        function openLogin() { document.getElementById('login-modal').classList.remove('hidden'); document.getElementById('pin-input').focus(); }
-        function closeLogin() { document.getElementById('login-modal').classList.add('hidden'); document.getElementById('pin-input').value = ''; }
-        function login() {
-            if (document.getElementById('pin-input').value === '789') {
-                sessionStorage.setItem('isLoggedIn', 'true');
-                closeLogin();
-                checkLogin();
-                showToast('Berhasil Masuk Sistem', 'success');
-            } else { showToast('PIN Salah!', 'error'); }
-        }
-        function logout() { sessionStorage.removeItem('isLoggedIn'); window.location.reload(); }
-
-        function switchMenu(menuId, closeMobile = false) {
-            document.querySelectorAll('.section-container').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.menu-item').forEach(el => {
-                el.classList.remove('bg-emerald-900', 'shadow-inner');
-                if(el.dataset.target === `${menuId}-section`) el.classList.add('bg-emerald-900', 'shadow-inner');
-            });
-            document.getElementById(`${menuId}-section`).classList.remove('hidden');
-            if(menuId === 'laporan') openLaporan(currentLaporanCategory);
-            if(closeMobile) document.getElementById('mobile-sidebar').classList.add('hidden');
-        }
-
-        // Mobile Menu Toggles
-        document.getElementById('mobile-menu-btn').addEventListener('click', () => {
-            document.getElementById('mobile-sidebar').classList.remove('hidden');
-            setTimeout(() => document.getElementById('mobile-sidebar-content').classList.remove('-translate-x-full'), 10);
-        });
-        document.getElementById('close-mobile-menu').addEventListener('click', () => {
-            document.getElementById('mobile-sidebar-content').classList.add('-translate-x-full');
-            setTimeout(() => document.getElementById('mobile-sidebar').classList.add('hidden'), 300);
-        });
-
-        // --- FETCH DATA DARI BACKEND ---
-        async function fetchData() {
-            if(!GAS_URL.startsWith('http')) return console.warn("URL Script belum diset.");
-            try {
-                const response = await fetch(GAS_URL + "?action=read");
-                const result = await response.json();
-                inventoryData = (result.status === 'success' && result.data) ? result.data : {};
-                
-                if(sessionStorage.getItem('isLoggedIn') === 'true') {
-                    updateStats();
-                    if(document.getElementById('laporan-section').classList.contains('hidden') === false) openLaporan(currentLaporanCategory);
-                } else { searchPublic(); }
-            } catch (error) {
-                console.error("Fetch Error:", error);
-                if(sessionStorage.getItem('isLoggedIn') === 'true') showToast('Gagal memuat data.', 'error');
-            }
-        }
-
-        function updateStats() {
-            let lahan = 0, bang = 0, per = 0;
-            for(let key in inventoryData) {
-                if(inventoryData[key].kategori === 'Lahan') lahan++;
-                else if(inventoryData[key].kategori === 'Bangunan') bang++;
-                else if(inventoryData[key].kategori === 'Peralatan') per++;
-            }
-            document.getElementById('stat-lahan').innerText = lahan;
-            document.getElementById('stat-bangunan').innerText = bang;
-            document.getElementById('stat-peralatan').innerText = per;
-        }
-
-        // --- PENCARIAN PUBLIK ---
-        function searchPublic() {
-            const term = document.getElementById('public-search').value.toLowerCase();
-            const container = document.getElementById('public-results');
-            const emptyState = document.getElementById('public-empty');
-            container.innerHTML = '';
-            
-            let results = [];
-            const keys = Object.keys(inventoryData).reverse(); 
-            for(let key of keys) {
-                const item = inventoryData[key];
-                const str = `${item.nama} ${item.hakPengguna || ''} ${item.kodeBarang} ${item.register}`.toLowerCase();
-                if(term === '' || str.includes(term)) results.push({key, item});
-            }
-            
-            if(results.length === 0) { emptyState.classList.remove('hidden'); } 
-            else {
-                emptyState.classList.add('hidden');
-                results.slice(0, 9).forEach(result => {
-                    const item = result.item;
-                    let icon = item.kategori === 'Lahan' ? 'fa-map' : (item.kategori === 'Bangunan' ? 'fa-building' : 'fa-tractor');
-                    let color = item.kategori === 'Lahan' ? 'emerald' : (item.kategori === 'Bangunan' ? 'blue' : 'amber');
-                    
-                    let titleText = item.kategori === 'Lahan' ? (item.hakPengguna || item.nama) : item.nama;
-                    let subText = item.kategori === 'Lahan' ? item.nama : (item.merk || item.konstruksi || '-');
-                    
-                    const card = document.createElement('div');
-                    card.className = `bg-white rounded-xl p-3.5 shadow-sm hover:shadow-md hover:border-${color}-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex items-center gap-3.5 border border-gray-100 relative overflow-hidden`;
-                    card.onclick = () => openPublicDetail(result.key);
-                    card.innerHTML = `
-                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-${color}-400 group-hover:bg-${color}-600 transition-colors"></div>
-                        <div class="w-12 h-12 rounded-xl bg-${color}-50 border border-${color}-100 flex-shrink-0 flex items-center justify-center text-${color}-600 text-lg group-hover:scale-110 group-hover:bg-${color}-100 transition-all shadow-inner">
-                            <i class="fas ${icon}"></i>
-                        </div>
-                        <div class="flex-1 min-w-0 py-0.5">
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="px-2 py-0.5 bg-${color}-100/80 text-${color}-700 text-[9px] font-extrabold rounded-md uppercase tracking-wider border border-${color}-200/50">${item.kategori}</span>
-                                <span class="text-[9px] text-gray-500 font-bold bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 truncate ml-2">Reg: ${escapeHTML(item.register || '-')}</span>
-                            </div>
-                            <h3 class="font-extrabold uppercase text-gray-900 text-sm truncate leading-tight group-hover:text-${color}-700 transition-colors">${escapeHTML(titleText)}</h3>
-                            <p class="text-[10px] text-gray-500 font-medium truncate mt-1 flex items-center gap-1.5">
-                                <i class="fas fa-info-circle text-[9px] opacity-60"></i> ${escapeHTML(subText)}
-                            </p>
-                        </div>
-                        <div class="w-7 h-7 rounded-full bg-gray-50 flex-shrink-0 flex items-center justify-center text-gray-400 group-hover:bg-${color}-500 group-hover:text-white transition-colors shadow-sm border border-gray-200 group-hover:border-${color}-500">
-                            <i class="fas fa-chevron-right text-xs"></i>
-                        </div>
-                    `;
-                    container.appendChild(card);
-                });
-            }
-        }
-
-        // --- LAPORAN ADMIN TAB & FILTER ---
-        function openLaporan(kat) {
-            currentLaporanCategory = kat;
-            ['tab-lahan', 'tab-bangunan', 'tab-peralatan'].forEach(id => {
-                document.getElementById(id).className = "tab-btn flex-1 py-4 px-4 font-bold text-gray-500 hover:text-gray-700 border-b-2 border-transparent transition";
-            });
-            const colorMap = {'Lahan':'text-emerald-700 border-emerald-600', 'Bangunan':'text-blue-700 border-blue-600', 'Peralatan':'text-amber-700 border-amber-600'};
-            document.getElementById(`tab-${kat.toLowerCase()}`).className = `tab-btn flex-1 py-4 px-4 font-bold bg-white border-b-2 ${colorMap[kat]}`;
-            
-            document.getElementById('search-input').value = '';
-            filterDataToTable();
-        }
-
-        function filterDataToTable(searchTerm = '') {
-            let filtered = {};
-            for(let key in inventoryData) {
-                const item = inventoryData[key];
-                if(item.kategori === currentLaporanCategory) {
-                    const str = `${item.nama} ${item.kodeBarang} ${item.register} ${item.hakPengguna || ''} ${item.merk || ''}`.toLowerCase();
-                    if(searchTerm === '' || str.includes(searchTerm.toLowerCase())) filtered[key] = item;
-                }
-            }
-            renderTable(filtered);
-        }
-
-        function searchData() { filterDataToTable(document.getElementById('search-input').value); }
-
-        function renderTable(data) {
-            const tbody = document.getElementById('table-body');
-            tbody.innerHTML = '';
-            let counter = 1;
-            for (let key in data) {
-                const item = data[key];
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-emerald-50 transition-colors border-b cursor-pointer group";
-                tr.onclick = () => openDetail(key); 
-                tr.title = "Klik untuk lihat detail cetak";
-
-                let aksiHtml = `<div class="flex gap-2 justify-center">`;
-                aksiHtml += `<button onclick="event.stopPropagation(); openForm('${item.kategori.toLowerCase()}', null, '${key}')" class="bg-yellow-500 hover:bg-yellow-600 text-white p-1.5 rounded text-xs shadow-sm" title="Edit"><i class="fas fa-edit"></i></button>`;
-                aksiHtml += `<button onclick="event.stopPropagation(); openDeleteModal('${key}')" class="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded text-xs shadow-sm" title="Hapus"><i class="fas fa-trash"></i></button>`;
-                if (item.foto) aksiHtml += `<button onclick="event.stopPropagation(); showPhoto('${item.foto}')" class="bg-blue-500 hover:bg-blue-600 text-white p-1.5 rounded text-xs shadow-sm" title="Lihat Foto"><i class="fas fa-image"></i></button>`;
-                if (item.koordinat && item.koordinat.includes(',')) aksiHtml += `<a href="https://maps.google.com/?q=${item.koordinat}" target="_blank" onclick="event.stopPropagation();" class="bg-emerald-500 hover:bg-emerald-600 text-white p-1.5 rounded text-xs shadow-sm" title="Buka Peta"><i class="fas fa-map-marker-alt"></i></a>`;
-                aksiHtml += `</div>`;
-
-                let infoUtama = item.kategori === 'Lahan' 
-                    ? `<span class="block font-extrabold text-gray-900 uppercase text-[13px] leading-tight">${escapeHTML(item.hakPengguna || '-')}</span><span class="text-[11px] font-medium text-gray-500">${escapeHTML(item.nama)}</span>` 
-                    : `<span class="font-bold text-gray-800">${escapeHTML(item.nama)}</span>`;
-
-                tr.innerHTML = `
-                    <td class="p-3 text-center">${counter++}</td>
-                    <td class="p-3">${infoUtama}</td>
-                    <td class="p-3 text-center">${escapeHTML(item.kodeBarang || '-')}</td>
-                    <td class="p-3 text-center"><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs border">${escapeHTML(item.register || '-')}</span></td>
-                    <td class="p-3">${escapeHTML(item.kategori === 'Lahan' ? item.jenisTanah : (item.kategori === 'Bangunan' ? item.konstruksi : item.merk))}</td>
-                    <td class="p-3"><div class="truncate max-w-[150px]" title="${escapeHTML(item.kategori === 'Lahan' ? item.alamatLokasi : (item.kategori === 'Bangunan' ? item.alamat : item.lokasi))}">${escapeHTML(item.kategori === 'Lahan' ? item.alamatLokasi : (item.kategori === 'Bangunan' ? item.alamat : item.lokasi))}</div></td>
-                    <td class="p-3 text-center">${escapeHTML(item.tahunPerolehan || item.tahunBeli || item.tahunBuat || '-')}</td>
-                    <td class="p-3 text-right font-medium text-emerald-700">Rp ${Number(item.harga || item.nilai || 0).toLocaleString('id-ID')}</td>
-                    <td class="p-3">${aksiHtml}</td>
-                `;
-                tbody.appendChild(tr);
-            }
-            if (counter === 1) tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-gray-500"><i class="fas fa-folder-open text-3xl mb-2 block"></i> Tidak ada data ditemukan</td></tr>`;
-        }
-
-        // --- SUBMIT / SIMPAN DATA (CREATE & UPDATE) ---
-        function openForm(type, editData = null, editId = null) {
-            document.querySelectorAll('.section-container').forEach(el => el.classList.add('hidden'));
-            document.getElementById('form-' + type + '-section').classList.remove('hidden');
-            
-            if (!editData && editId && inventoryData[editId]) editData = inventoryData[editId];
-
-            if (editData && editId) {
-                if (type === 'tanah') {
-                    document.getElementById('title-form-tanah').innerText = "Edit Data Inventaris Tanah";
-                    document.getElementById('t-id').value = editId;
-                    ['hakpengguna','nama','jenis','alamat','kode','register','luas','luassekarang','batas-u','batas-s','batas-t','batas-b','status','nosertifikat','tglsertifikat','asal','tahun','harga','penggunaan','koordinat'].forEach(k => {
-                        const dbKey = { 'jenis': 'jenisTanah', 'alamat': 'alamatLokasi', 'batas-u': 'batasUtara', 'batas-s': 'batasSelatan', 'batas-t': 'batasTimur', 'batas-b': 'batasBarat', 'status': 'kondisi', 'tahun': 'tahunPerolehan', 'kode': 'kodeBarang', 'luassekarang': 'luasSekarang', 'nosertifikat': 'noSertifikat', 'tglsertifikat': 'tglSertifikat', 'asal': 'asalUsul' }[k] || k;
-                        if(document.getElementById('t-' + k)) document.getElementById('t-' + k).value = editData[dbKey] || '';
-                    });
-                    const imgFields = ['foto', 'foto2', 'buktiSppt', 'buktiUkur', 'buktiBatas', 'buktiSertifikat'];
-                    const ids = ['t-preview', 't-preview-2', 't-preview-sppt', 't-preview-ukur', 't-preview-batas', 't-preview-sertifikat'];
-                    const plh = ['t-placeholder', 't-placeholder-2', 't-placeholder-sppt', 't-placeholder-ukur', 't-placeholder-batas', 't-placeholder-sertifikat'];
-                    const b64 = ['t-base64', 't-base64-2', 't-base64-sppt', 't-base64-ukur', 't-base64-batas', 't-base64-sertifikat'];
-                    
-                    for(let i=0; i<imgFields.length; i++) {
-                        if (editData[imgFields[i]]) {
-                            document.getElementById(ids[i]).src = editData[imgFields[i]];
-                            document.getElementById(ids[i]).classList.remove('hidden');
-                            document.getElementById(plh[i]).classList.add('hidden');
-                            document.getElementById(b64[i]).value = editData[imgFields[i]];
-                        }
-                    }
-                } else if (type === 'bangunan') {
-                    document.getElementById('title-form-bangunan').innerText = "Edit Data Bangunan";
-                    document.getElementById('b-id').value = editId;
-                    ['nama', 'kode', 'register', 'luas', 'lantai', 'alamat', 'konstruksi', 'kondisi', 'noimb', 'tglimb', 'tahunbuat', 'tahunbeli', 'asal', 'nilai', 'koordinat'].forEach(k => {
-                        const dbKey = { 'kode': 'kodeBarang', 'noimb': 'noImb', 'tglimb': 'tglImb', 'tahunbuat': 'tahunBuat', 'tahunbeli': 'tahunBeli', 'asal': 'asalUsul' }[k] || k;
-                        if(document.getElementById('b-' + k)) document.getElementById('b-' + k).value = editData[dbKey] || '';
-                    });
-                    if (editData.foto) {
-                        document.getElementById('b-preview').src = editData.foto;
-                        document.getElementById('b-preview').classList.remove('hidden');
-                        document.getElementById('b-placeholder').classList.add('hidden');
-                        document.getElementById('b-base64').value = editData.foto;
-                    }
-                } else if (type === 'peralatan') {
-                    document.getElementById('title-form-peralatan').innerText = "Edit Data Peralatan";
-                    document.getElementById('p-id').value = editId;
-                    ['nama', 'merk', 'kode', 'register', 'ukuran', 'warna', 'bahan', 'norangka', 'nomesin', 'tahunbuat', 'tahunbeli', 'asal', 'harga', 'kondisi', 'lokasi'].forEach(k => {
-                        const dbKey = { 'kode': 'kodeBarang', 'norangka': 'noRangka', 'nomesin': 'noMesin', 'tahunbuat': 'tahunBuat', 'tahunbeli': 'tahunBeli', 'asal': 'asalUsul' }[k] || k;
-                        if(document.getElementById('p-' + k)) document.getElementById('p-' + k).value = editData[dbKey] || '';
-                    });
-                    if (editData.foto) {
-                        document.getElementById('p-preview').src = editData.foto;
-                        document.getElementById('p-preview').classList.remove('hidden');
-                        document.getElementById('p-placeholder').classList.add('hidden');
-                        document.getElementById('p-base64').value = editData.foto;
-                    }
-                }
-            } else { resetForm(type); }
-        }
-
-        function resetForm(type) {
-            if(document.getElementById(`form-${type}`)) document.getElementById(`form-${type}`).reset();
-            const prefix = type.charAt(0);
-            if(document.getElementById(`${prefix}-id`)) document.getElementById(`${prefix}-id`).value = '';
-            
-            // Reset visual foto
-            document.querySelectorAll(`img[id^="${prefix}-preview"]`).forEach(el => { el.src = ''; el.classList.add('hidden'); });
-            document.querySelectorAll(`div[id^="${prefix}-placeholder"]`).forEach(el => el.classList.remove('hidden'));
-            document.querySelectorAll(`input[id^="${prefix}-base64"]`).forEach(el => el.value = '');
-        }
-
-        async function submitData(e, kategori) {
-            e.preventDefault();
-            if(!GAS_URL.startsWith('http')) { showToast('Aplikasi Offline, URL Script belum diset.', 'warning'); return; }
-            
-            const prefix = kategori === 'Lahan' ? 't' : (kategori === 'Bangunan' ? 'b' : 'p');
-            const editId = document.getElementById(`${prefix}-id`).value;
-            const btn = document.getElementById(`btn-${prefix}-submit`);
-            const formName = kategori === 'Lahan' ? 'tanah' : (kategori === 'Bangunan' ? 'bangunan' : 'peralatan');
-            
-            const oriBtn = btn.innerHTML;
-            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Menyimpan...`; 
-            btn.disabled = true;
-
-            let payloadData = { kategori: kategori, timestamp: new Date().toISOString() };
-            
-            // Tangkap Payload Berdasarkan Kategori
-            if(kategori === 'Lahan') {
-                ['hakpengguna','nama','jenis','alamat','kode','register','luas','luassekarang','batas-u','batas-s','batas-t','batas-b','status','nosertifikat','tglsertifikat','asal','tahun','harga','penggunaan','koordinat'].forEach(k => {
-                    const dbKey = { 'jenis': 'jenisTanah', 'alamat': 'alamatLokasi', 'batas-u': 'batasUtara', 'batas-s': 'batasSelatan', 'batas-t': 'batasTimur', 'batas-b': 'batasBarat', 'status': 'kondisi', 'tahun': 'tahunPerolehan', 'kode': 'kodeBarang', 'luassekarang': 'luasSekarang', 'nosertifikat': 'noSertifikat', 'tglsertifikat': 'tglSertifikat', 'asal': 'asalUsul' }[k] || k;
-                    payloadData[dbKey] = document.getElementById('t-' + k).value;
-                });
-                payloadData.foto = document.getElementById('t-base64').value; payloadData.foto2 = document.getElementById('t-base64-2').value;
-                payloadData.buktiSppt = document.getElementById('t-base64-sppt').value; payloadData.buktiUkur = document.getElementById('t-base64-ukur').value;
-                payloadData.buktiBatas = document.getElementById('t-base64-batas').value; payloadData.buktiSertifikat = document.getElementById('t-base64-sertifikat').value;
-            } else if (kategori === 'Bangunan') {
-                ['nama', 'kode', 'register', 'luas', 'lantai', 'alamat', 'konstruksi', 'kondisi', 'noimb', 'tglimb', 'tahunbuat', 'tahunbeli', 'asal', 'nilai', 'koordinat'].forEach(k => {
-                    const dbKey = { 'kode': 'kodeBarang', 'noimb': 'noImb', 'tglimb': 'tglImb', 'tahunbuat': 'tahunBuat', 'tahunbeli': 'tahunBeli', 'asal': 'asalUsul' }[k] || k;
-                    payloadData[dbKey] = document.getElementById('b-' + k).value;
-                });
-                payloadData.foto = document.getElementById('b-base64').value;
-            } else if (kategori === 'Peralatan') {
-                ['nama', 'merk', 'kode', 'register', 'ukuran', 'warna', 'bahan', 'norangka', 'nomesin', 'tahunbuat', 'tahunbeli', 'asal', 'harga', 'kondisi', 'lokasi'].forEach(k => {
-                    const dbKey = { 'kode': 'kodeBarang', 'norangka': 'noRangka', 'nomesin': 'noMesin', 'tahunbuat': 'tahunBuat', 'tahunbeli': 'tahunBeli', 'asal': 'asalUsul' }[k] || k;
-                    payloadData[dbKey] = document.getElementById('p-' + k).value;
-                });
-                payloadData.foto = document.getElementById('p-base64').value;
-            }
-
-            try {
-                const actionType = editId ? "update" : "insert";
-                // Request dengan method POST berformat Text mencegah browser memunculkan CORS Error
-                const res = await fetch(GAS_URL, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: actionType, id: editId, data: payloadData }) 
-                });
-                const result = await res.json();
-                
-                if(result.status === 'success') {
-                    showToast(editId ? 'Diperbarui!' : 'Disimpan!', 'success');
-                    resetForm(formName); 
-                    await fetchData(); 
-                    switchMenu('laporan');
-                } else {
-                    throw new Error(result.message || "Unknown error");
-                }
-            } catch (err) { 
-                console.error("Fetch Error:", err);
-                showToast('Gagal terhubung ke Server. Pastikan Script Aksesnya "Anyone"', 'error'); 
-            } finally { 
-                btn.innerHTML = oriBtn; 
-                btn.disabled = false; 
-            }
-        }
-
-        // --- HAPUS DATA ---
-        function openDeleteModal(id) { itemToDelete = id; document.getElementById('delete-modal').classList.remove('hidden'); }
-        function closeDeleteModal() { itemToDelete = null; document.getElementById('delete-modal').classList.add('hidden'); }
-        document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
-            if(!itemToDelete) return;
-            closeDeleteModal(); showToast('Menghapus...', 'warning');
-            try {
-                const res = await fetch(GAS_URL, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: "delete", id: itemToDelete }) 
-                });
-                if((await res.json()).status === 'success') { showToast('Data terhapus!', 'success'); await fetchData(); }
-            } catch(e) { showToast('Gagal menghapus', 'error'); }
-        });
-
-        // --- DETAIL PUBLIK & ADMIN PRINT (2 HALAMAN) ---
-        function openPublicDetail(key) {
-            const item = inventoryData[key];
-            if (!item) return;
-
-            const detailContent = document.getElementById('detail-content');
-            document.getElementById('detail-modal').classList.remove('hidden');
-
-            let html = `<div class="bg-white rounded-lg p-6 max-w-4xl mx-auto shadow-2xl relative">`;
-            html += `<div class="flex justify-between items-center mb-6 border-b pb-4">
-                        <h2 class="text-2xl font-bold text-emerald-800">Detail Aset Publik</h2>
-                        <button onclick="closeDetail()" class="text-gray-400 hover:text-red-500 bg-gray-100 hover:bg-red-50 rounded-full w-8 h-8 flex items-center justify-center transition-colors"><i class="fas fa-times text-xl"></i></button>
-                     </div>`;
-
-            html += `<div class="border rounded-lg overflow-hidden divide-y divide-gray-200 shadow-sm">`;
-
-            const renderBlock = (label, val, isHighlight = false) => {
-                let valClass = isHighlight ? "font-extrabold text-gray-900 uppercase text-lg" : "font-medium text-gray-700";
-                return `<div class="flex flex-col sm:flex-row hover:bg-gray-50 transition-colors">
-                            <div class="w-full sm:w-1/3 bg-gray-50/80 p-3 text-sm font-bold text-gray-600 border-r border-gray-200">${label}</div>
-                            <div class="w-full sm:w-2/3 p-3 text-sm ${valClass}">${escapeHTML(val) || '-'}</div>
-                        </div>`;
-            };
-
-            html += renderBlock('Kategori', item.kategori);
-            if (item.kategori === 'Lahan') {
-                html += renderBlock('Nama Hak Pengguna', item.hakPengguna, true);
-                html += renderBlock('Nama Tanah', item.nama);
-                html += renderBlock('Jenis Tanah', item.jenisTanah);
-                html += renderBlock('Alamat / Lokasi', item.alamatLokasi);
-                html += renderBlock('Batas / Status', `${item.kondisi} (U: ${item.batasUtara || '-'})`);
-            } else if (item.kategori === 'Bangunan') {
-                html += renderBlock('Nama Bangunan', item.nama, true);
-                html += renderBlock('Konstruksi', item.konstruksi);
-                html += renderBlock('Alamat', item.alamat);
-            } else {
-                html += renderBlock('Nama Barang', item.nama, true);
-                html += renderBlock('Merk/Tipe', item.merk);
-                html += renderBlock('Lokasi', item.lokasi);
-            }
-            html += renderBlock('Kode Barang', item.kodeBarang);
-            html += renderBlock('Register', item.register);
-            html += `</div>`;
-
-            const hasPhotos = (item.kategori === 'Lahan' && (item.foto || item.foto2 || item.buktiSppt || item.buktiUkur || item.buktiBatas || item.buktiSertifikat)) || (item.kategori !== 'Lahan' && item.foto);
-            if(hasPhotos) {
-                html += `<div class="mt-8"><h3 class="text-lg font-bold mb-4 border-b pb-2 text-gray-700"><i class="fas fa-images text-emerald-600 mr-2"></i>Lampiran Visual</h3>
-                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">`;
-                const renderPhoto = (src, label) => src ? `<div class="border rounded-lg p-2 bg-gray-50 shadow-sm hover:shadow-md transition-shadow"><p class="text-xs font-bold text-gray-500 mb-2 text-center uppercase tracking-wider">${label}</p><img src="${src}" class="w-full aspect-[4/3] object-cover rounded border border-gray-200 cursor-pointer" onclick="showPhoto('${src}')" alt="${label}"></div>` : '';
-
-                if (item.kategori === 'Lahan') {
-                    html += renderPhoto(item.foto, 'Foto Utama') + renderPhoto(item.foto2, 'Foto Tambahan') + renderPhoto(item.buktiSppt, 'Bukti SPPT') + renderPhoto(item.buktiUkur, 'Bukti Ukur') + renderPhoto(item.buktiBatas, 'Bukti Batas') + renderPhoto(item.buktiSertifikat, 'Sertifikat');
-                } else { html += renderPhoto(item.foto, 'Foto Aset'); }
-                html += `</div></div>`;
-            }
-            html += `</div>`;
-            detailContent.innerHTML = html;
-        }
-
-        function openDetail(key) {
-            const item = inventoryData[key];
-            if(!item) return;
-
-            document.getElementById('detail-modal').classList.remove('hidden');
-            const detailContent = document.getElementById('detail-content');
-
-            // HALAMAN 1 (Print)
-            let html = `
-            <div class="print:hidden flex justify-between items-center mb-4 bg-white p-4 rounded-lg shadow-md border border-gray-200 sticky top-4 z-50">
-                <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-print text-emerald-600 mr-2"></i>Pratinjau KIB</h2>
-                <div class="flex gap-2">
-                    <button onclick="window.print()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded shadow font-bold flex items-center gap-2"><i class="fas fa-print"></i> Cetak A4</button>
-                    <button onclick="closeDetail()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded shadow font-bold flex items-center gap-2"><i class="fas fa-times"></i> Tutup</button>
-                </div>
+        <!-- TAB: DASHBOARD -->
+        <section id="section-dashboard" class="tab-content space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Item Aset</span>
+                <i data-lucide="boxes" class="w-5 h-5 text-emerald-600"></i>
+              </div>
+              <p id="stat-total" class="text-3xl font-bold text-slate-800 mt-2">0</p>
             </div>
 
-            <div class="print-first-page bg-white p-8 rounded-lg shadow-sm border border-gray-200 mx-auto max-w-4xl block relative">
-                <div class="text-center mb-6 border-b-2 border-black pb-4">
-                    <h2 class="text-2xl font-bold uppercase tracking-wider">Inventaris Desa Baleadi</h2>
-                    <h3 class="text-lg font-semibold uppercase">Kartu Inventaris Barang (KIB ${item.kategori === 'Lahan'?'A - Tanah':(item.kategori==='Bangunan'?'C - Bangunan':'B - Peralatan')})</h3>
-                </div>
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Kondisi Baik</span>
+                <i data-lucide="check-circle-2" class="w-5 h-5 text-blue-600"></i>
+              </div>
+              <p id="stat-good" class="text-3xl font-bold text-blue-600 mt-2">0</p>
+            </div>
 
-                <div class="border border-gray-300 rounded overflow-hidden divide-y divide-gray-200">
-            `;
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Rusak / Perbaikan</span>
+                <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600"></i>
+              </div>
+              <p id="stat-damaged" class="text-3xl font-bold text-amber-600 mt-2">0</p>
+            </div>
 
-            const renderBlock = (label, val, isHighlight=false) => {
-                let valClass = isHighlight ? "font-black print:text-[16px] text-lg uppercase" : "font-medium text-gray-900";
-                return `<div class="flex flex-col sm:flex-row hover:bg-gray-50 transition-colors">
-                            <div class="w-full sm:w-1/3 bg-gray-50 py-3 px-4 text-sm font-bold text-gray-700 border-r border-gray-200">${label}</div>
-                            <div class="w-full sm:w-2/3 py-3 px-4 text-sm ${valClass}">${escapeHTML(val) || '-'}</div>
-                        </div>`;
-            };
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Estimasi Nilai</span>
+                <i data-lucide="coins" class="w-5 h-5 text-purple-600"></i>
+              </div>
+              <p id="stat-value" class="text-2xl font-bold text-slate-800 mt-2">Rp 0</p>
+            </div>
+          </div>
+        </section>
 
-            html += `<div class="bg-gray-200 p-2 font-bold text-center border-b border-gray-300">1. IDENTITAS ASET</div>`;
-            if(item.kategori === 'Lahan') {
-                html += renderBlock('Nama Hak Pengguna', item.hakPengguna, true);
-                html += renderBlock('Nama Tanah', item.nama);
-                html += renderBlock('Jenis Tanah', item.jenisTanah);
-                html += renderBlock('Alamat / Lokasi', item.alamatLokasi);
-            } else if (item.kategori === 'Bangunan') {
-                html += renderBlock('Nama Bangunan', item.nama, true);
-                html += renderBlock('Kondisi', item.kondisi);
-                html += renderBlock('Konstruksi', item.konstruksi);
-                html += renderBlock('Alamat', item.alamat);
-            } else {
-                html += renderBlock('Nama Barang', item.nama, true);
-                html += renderBlock('Merk / Tipe', item.merk);
-                html += renderBlock('Bahan', item.bahan);
-            }
-            html += renderBlock('Nomor Kode Barang', item.kodeBarang);
-            html += renderBlock('Nomor Register', item.register);
-
-            html += `<div class="bg-gray-200 p-2 font-bold text-center border-y border-gray-300">2. SPESIFIKASI & LEGALITAS</div>`;
-            if (item.kategori === 'Lahan') {
-                html += renderBlock('Luas Awal / Sekarang', `${item.luas || '-'} m² / ${item.luasSekarang || '-'} m²`);
-                html += renderBlock('Batas Utara', item.batasUtara);
-                html += renderBlock('Batas Selatan', item.batasSelatan);
-                html += renderBlock('Batas Timur', item.batasTimur);
-                html += renderBlock('Batas Barat', item.batasBarat);
-                html += renderBlock('Status Hak / Kondisi', item.kondisi);
-                html += renderBlock('No. Sertifikat', item.noSertifikat);
-            } else if (item.kategori === 'Bangunan') {
-                html += renderBlock('Luas / Lantai', `${item.luas || '-'} m² / ${item.lantai || '-'}`);
-                html += renderBlock('No. IMB / Tgl', `${item.noImb || '-'} / ${item.tglImb || '-'}`);
-                html += renderBlock('Status Tanah', item.statusTanah || '-');
-            } else {
-                html += renderBlock('Ukuran / Warna', `${item.ukuran || '-'} / ${item.warna || '-'}`);
-                html += renderBlock('No. Rangka', item.noRangka);
-                html += renderBlock('No. Mesin', item.noMesin);
-            }
-
-            html += `<div class="bg-gray-200 p-2 font-bold text-center border-y border-gray-300">3. ADMINISTRASI</div>`;
-            html += renderBlock('Asal Usul', item.asalUsul);
-            html += renderBlock('Tahun Perolehan', item.tahunPerolehan || item.tahunBeli);
-            html += renderBlock('Harga (Rp)', `Rp ${Number(item.harga || item.nilai || 0).toLocaleString('id-ID')}`);
-            if (item.kategori === 'Lahan') html += renderBlock('Penggunaan', item.penggunaan);
-            html += renderBlock('Titik Koordinat', item.koordinat);
-
-            html += `</div></div>`; // End Hal 1
-
-            // HALAMAN 2 (Print)
-            const hasPhotos = (item.kategori === 'Lahan' && (item.foto || item.foto2 || item.buktiSppt || item.buktiUkur || item.buktiBatas || item.buktiSertifikat)) || (item.kategori !== 'Lahan' && item.foto);
+        <!-- TAB: KELOLA ASET -->
+        <section id="section-assets" class="tab-content hidden space-y-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
+            <div class="relative flex-1 max-w-md">
+              <i data-lucide="search" class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+              <input type="text" id="searchInput" onkeyup="filterAssets()" placeholder="Cari nama aset, kode, atau kategori..." class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
             
-            if(hasPhotos) {
-                html += `
-                <div id="detail-content-page2" class="print-page-break bg-white p-8 rounded-lg shadow-sm border border-gray-200 mx-auto max-w-4xl mt-6 relative">
-                    <div class="text-center mb-6 border-b-2 border-black pb-2">
-                        <h3 class="text-xl font-bold uppercase">4. LAMPIRAN VISUAL & PENGESAHAN</h3>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                `;
+            <!-- TOMBOL AKSI EKSPOR & TAMBAH -->
+            <div class="flex items-center space-x-2">
+              <button onclick="exportToCSV()" class="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition">
+                <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
+                <span>Ekspor Excel</span>
+              </button>
+              <button onclick="printReport()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3.5 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition">
+                <i data-lucide="printer" class="w-4 h-4"></i>
+                <span>Cetak PDF</span>
+              </button>
+              <button onclick="openFormModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Tambah Aset</span>
+              </button>
+            </div>
+          </div>
 
-                const renderPrintPhoto = (src, label) => src ? `<div class="border border-gray-300 rounded p-2 text-center bg-gray-50 shadow-sm"><p class="text-xs font-bold text-gray-700 mb-2 uppercase">${label}</p><img src="${src}" class="w-full aspect-[4/3] object-cover rounded border border-gray-200" alt="${label}"></div>` : '';
+          <!-- TABEL ASET -->
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium">
+                <tr>
+                  <th class="p-4">Kode & Nama Aset</th>
+                  <th class="p-4">Kategori</th>
+                  <th class="p-4">Jumlah</th>
+                  <th class="p-4">Kondisi</th>
+                  <th class="p-4">Estimasi Nilai</th>
+                  <th class="p-4 text-center action-col">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="assetTableBody" class="divide-y divide-slate-100">
+                <tr>
+                  <td colspan="6" class="p-8 text-center text-slate-400">Memuat data aset...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
 
-                if (item.kategori === 'Lahan') {
-                    html += renderPrintPhoto(item.foto, 'Foto Utama') + renderPrintPhoto(item.foto2, 'Foto Tambahan') + renderPrintPhoto(item.buktiSppt, 'Bukti SPPT') + renderPrintPhoto(item.buktiUkur, 'Bukti Ukur') + renderPrintPhoto(item.buktiBatas, 'Bukti Batas') + renderPrintPhoto(item.buktiSertifikat, 'Sertifikat');
-                } else { html += renderPrintPhoto(item.foto, 'Foto Aset'); }
+  <!-- MODAL FORM ASET -->
+  <div id="assetModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50 p-4 no-print">
+    <div class="bg-white rounded-xl max-w-lg w-full p-6 shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b pb-3">
+        <h3 id="modalTitle" class="text-lg font-bold text-slate-800">Tambah Data Aset</h3>
+        <button onclick="closeFormModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
 
-                html += `</div>`;
-                
-                html += `
-                    <div class="absolute bottom-12 right-12 w-64 text-center">
-                        <p class="mb-1 text-sm">Baleadi, .................................... 20....</p>
-                        <p class="font-bold text-sm mb-20">Kepala Desa Baleadi</p>
-                        <p class="font-bold text-sm underline leading-tight">......................................................</p>
-                    </div>
-                </div>`;
+      <form id="assetForm" onsubmit="handleFormSubmit(event)" class="space-y-3">
+        <input type="hidden" id="formRowIndex">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Kode Aset</label>
+          <input type="text" id="formCode" required class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nama Aset</label>
+          <input type="text" id="formName" required class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Kategori</label>
+            <input type="text" id="formCategory" placeholder="Elektronik, Bangunan, dll." required class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Jumlah</label>
+            <input type="number" id="formQuantity" min="1" value="1" required class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Kondisi</label>
+            <select id="formCondition" class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+              <option value="Baik">Baik</option>
+              <option value="Rusak Ringan">Rusak Ringan</option>
+              <option value="Rusak Berat">Rusak Berat</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nilai Satuan (Rp)</label>
+            <input type="number" id="formValue" value="0" class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Keterangan / Lokasi</label>
+          <textarea id="formDescription" rows="2" class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"></textarea>
+        </div>
+
+        <div class="flex justify-end space-x-2 border-t pt-4">
+          <button type="button" onclick="closeFormModal()" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-100">Batal</button>
+          <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">Simpan Data</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let globalAssetData = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+      lucide.createIcons();
+      loadDashboardStats();
+      loadAssetData();
+    });
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('bg-emerald-600', 'text-white');
+        btn.classList.add('hover:bg-slate-800', 'hover:text-white');
+      });
+
+      if (tab === 'dashboard') {
+        document.getElementById('section-dashboard').classList.remove('hidden');
+        document.getElementById('nav-dashboard').classList.add('bg-emerald-600', 'text-white');
+        document.getElementById('page-title').innerText = 'Dashboard Admin';
+      } else if (tab === 'assets') {
+        document.getElementById('section-assets').classList.remove('hidden');
+        document.getElementById('nav-assets').classList.add('bg-emerald-600', 'text-white');
+        document.getElementById('page-title').innerText = 'Pengelolaan Aset Desa';
+      }
+    }
+
+    function loadDashboardStats() {
+      google.script.run.withSuccessHandler(function(stats) {
+        document.getElementById('stat-total').innerText = stats.totalAssets;
+        document.getElementById('stat-good').innerText = stats.goodCondition;
+        document.getElementById('stat-damaged').innerText = stats.damagedCondition;
+        document.getElementById('stat-value').innerText = 'Rp ' + Number(stats.totalValue).toLocaleString('id-ID');
+      }).getDashboardStats();
+    }
+
+    function loadAssetData() {
+      google.script.run.withSuccessHandler(function(data) {
+        globalAssetData = data;
+        renderAssetTable(data);
+      }).getAssetData();
+    }
+
+    function renderAssetTable(data) {
+      const tbody = document.getElementById('assetTableBody');
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400">Belum ada data aset terdaftar.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.map(item => `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="p-4">
+            <div class="font-bold text-slate-800">${item.name}</div>
+            <div class="text-xs text-slate-400">${item.code}</div>
+          </td>
+          <td class="p-4 text-slate-600">${item.category}</td>
+          <td class="p-4 font-semibold text-slate-700">${item.quantity}</td>
+          <td class="p-4">
+            <span class="px-2 py-1 rounded-full text-xs font-semibold ${
+              item.condition === 'Baik' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+            }">${item.condition}</span>
+          </td>
+          <td class="p-4 text-slate-700 font-medium">Rp ${Number(item.value).toLocaleString('id-ID')}</td>
+          <td class="p-4 text-center action-col">
+            <div class="flex justify-center space-x-2">
+              <button onclick="editAsset(${item.rowIndex})" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+              <button onclick="deleteAsset(${item.rowIndex})" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+      
+      lucide.createIcons();
+    }
+
+    function filterAssets() {
+      const keyword = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = globalAssetData.filter(item => 
+        item.name.toLowerCase().includes(keyword) ||
+        item.code.toLowerCase().includes(keyword) ||
+        item.category.toLowerCase().includes(keyword)
+      );
+      renderAssetTable(filtered);
+    }
+
+    /* --- FUNGSI EKSPOR EXCEL (CSV) --- */
+    function exportToCSV() {
+      if (!globalAssetData || globalAssetData.length === 0) {
+        Swal.fire('Perhatian', 'Tidak ada data aset untuk diekspor.', 'warning');
+        return;
+      }
+
+      // UTF-8 BOM agar Excel membaca format bahasa & karakter dengan benar
+      let csvContent = "\uFEFF";
+      csvContent += "Kode Aset;Nama Aset;Kategori;Jumlah;Kondisi;Nilai Satuan (Rp);Total Nilai (Rp);Keterangan\n";
+
+      globalAssetData.forEach(item => {
+        const totalValue = (Number(item.quantity) || 1) * (Number(item.value) || 0);
+        const row = [
+          `"${(item.code || '').replace(/"/g, '""')}"`,
+          `"${(item.name || '').replace(/"/g, '""')}"`,
+          `"${(item.category || '').replace(/"/g, '""')}"`,
+          item.quantity,
+          `"${item.condition}"`,
+          item.value,
+          totalValue,
+          `"${(item.description || '').replace(/"/g, '""')}"`
+        ];
+        csvContent += row.join(";") + "\n";
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const today = new Date().toISOString().split('T')[0];
+      
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Laporan_Aset_Desa_Baleadi_${today}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    /* --- FUNGSI CETAK PDF / PRINT --- */
+    function printReport() {
+      if (document.getElementById('section-assets').classList.contains('hidden')) {
+        switchTab('assets');
+      }
+
+      const today = new Date().toLocaleDateString('id-ID', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      });
+      document.getElementById('printDate').innerText = 'Tanggal Cetak: ' + today;
+
+      window.print();
+    }
+
+    function openFormModal(editData = null) {
+      document.getElementById('assetForm').reset();
+      document.getElementById('formRowIndex').value = '';
+      
+      if (editData) {
+        document.getElementById('modalTitle').innerText = 'Edit Data Aset';
+        document.getElementById('formRowIndex').value = editData.rowIndex;
+        document.getElementById('formCode').value = editData.code;
+        document.getElementById('formName').value = editData.name;
+        document.getElementById('formCategory').value = editData.category;
+        document.getElementById('formQuantity').value = editData.quantity;
+        document.getElementById('formCondition').value = editData.condition;
+        document.getElementById('formValue').value = editData.value;
+        document.getElementById('formDescription').value = editData.description;
+      } else {
+        document.getElementById('modalTitle').innerText = 'Tambah Data Aset Baru';
+        document.getElementById('formCode').value = 'AST-' + Math.floor(1000 + Math.random() * 9000);
+      }
+
+      document.getElementById('assetModal').classList.remove('hidden');
+      document.getElementById('assetModal').classList.add('flex');
+    }
+
+    function closeFormModal() {
+      document.getElementById('assetModal').classList.add('hidden');
+      document.getElementById('assetModal').classList.remove('flex');
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      
+      const payload = {
+        rowIndex: document.getElementById('formRowIndex').value,
+        code: document.getElementById('formCode').value,
+        name: document.getElementById('formName').value,
+        category: document.getElementById('formCategory').value,
+        quantity: document.getElementById('formQuantity').value,
+        condition: document.getElementById('formCondition').value,
+        value: document.getElementById('formValue').value,
+        description: document.getElementById('formDescription').value
+      };
+
+      Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+      google.script.run.withSuccessHandler(function(res) {
+        if (res.success) {
+          Swal.fire({ icon: 'success', title: 'Berhasil!', text: res.message, timer: 1500, showConfirmButton: false });
+          closeFormModal();
+          loadAssetData();
+          loadDashboardStats();
+        } else {
+          Swal.fire({ icon: 'error', title: 'Gagal', text: res.message });
+        }
+      }).saveAssetData(payload);
+    }
+
+    function editAsset(rowIndex) {
+      const item = globalAssetData.find(a => a.rowIndex === rowIndex);
+      if (item) openFormModal(item);
+    }
+
+    function deleteAsset(rowIndex) {
+      Swal.fire({
+        title: 'Hapus Data Aset?',
+        text: 'Tindakan ini tidak dapat dibatalkan.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          Swal.fire({ title: 'Menghapus...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+          google.script.run.withSuccessHandler(function(res) {
+            if (res.success) {
+              Swal.fire({ icon: 'success', title: 'Terhapus!', text: res.message, timer: 1500, showConfirmButton: false });
+              loadAssetData();
+              loadDashboardStats();
+            } else {
+              Swal.fire({ icon: 'error', title: 'Gagal', text: res.message });
             }
-
-            detailContent.innerHTML = html;
+          }).deleteAssetData(rowIndex);
         }
-
-        function closeDetail() { document.getElementById('detail-modal').classList.add('hidden'); }
-
-        // --- UTILITIES FOTO, LOKASI, EXCEL ---
-        function compressAndPreview(input, previewId, base64Id) {
-            const file = input.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = function(e) {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 800; 
-                    let width = img.width, height = img.height;
-                    
-                    if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                    canvas.width = width; canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6); 
-                    
-                    document.getElementById(previewId).src = compressedBase64;
-                    document.getElementById(previewId).classList.remove('hidden');
-                    document.getElementById(previewId.replace('preview', 'placeholder')).classList.add('hidden');
-                    document.getElementById(base64Id).value = compressedBase64;
-                }
-            }
-        }
-
-        function showPhoto(src) { document.getElementById('photo-fullscreen').src = src; document.getElementById('photo-modal').classList.remove('hidden'); }
-        function closePhoto() { document.getElementById('photo-modal').classList.add('hidden'); }
-        function getLocation(targetId) {
-            if (navigator.geolocation) {
-                showToast("Mendeteksi lokasi...");
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => { document.getElementById(targetId).value = `${pos.coords.latitude}, ${pos.coords.longitude}`; showToast("Lokasi didapat", "success"); },
-                    () => { showToast("Gagal mendapat lokasi GPS", "error"); }
-                );
-            }
-        }
-
-        function exportExcel() {
-            let exportData = [];
-            let counter = 1;
-            Object.keys(inventoryData).forEach(key => {
-                const item = inventoryData[key];
-                if(item.kategori === currentLaporanCategory) {
-                    if (currentLaporanCategory === 'Lahan') exportData.push({ "No": counter++, "Nama Pengguna": item.hakPengguna, "Nama Tanah": item.nama, "Register": item.register, "Alamat": item.alamatLokasi, "Luas Sekarang (m2)": item.luasSekarang, "No Sertifikat": item.noSertifikat, "Harga (Rp)": Number(item.harga) || 0 });
-                    else if (currentLaporanCategory === 'Bangunan') exportData.push({ "No": counter++, "Nama Bangunan": item.nama, "Register": item.register, "Kondisi": item.kondisi, "Alamat": item.alamat, "Tahun Buat": item.tahunBuat, "Nilai (Rp)": Number(item.nilai) || 0 });
-                    else exportData.push({ "No": counter++, "Nama Barang": item.nama, "Register": item.register, "Merk": item.merk, "Kondisi": item.kondisi, "Lokasi": item.lokasi, "Harga (Rp)": Number(item.harga) || 0 });
-                }
-            });
-            if (exportData.length === 0) { showToast("Data kosong", "warning"); return; }
-            try {
-                showToast("Membuat Excel...", "success");
-                const ws = XLSX.utils.json_to_sheet(exportData); 
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Laporan_" + currentLaporanCategory);
-                XLSX.writeFile(wb, `Inventaris_${currentLaporanCategory}_Baleadi.xlsx`);
-            } catch (e) { showToast("Gagal membuat Excel", "error"); }
-        }
-
-        window.onload = function() {
-            checkLogin();
-        };
-    </script>
+      });
+    }
+  </script>
 </body>
 </html>
