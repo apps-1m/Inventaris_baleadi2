@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventaris Tanah (KIB A) - Desa Baleadi (Minimalis)</title>
     
-    <!-- Tailwind CSS (Tema Minimalis Terang) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -47,7 +46,6 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <!-- LOGIN SCREEN -->
     <div id="login-page" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-100 p-4">
         <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm border border-slate-200">
             <div class="text-center mb-6">
@@ -71,7 +69,6 @@
         </div>
     </div>
 
-    <!-- MAIN APP CONTAINER (Centered Minimalist Layout) -->
     <div id="dashboard-page" class="hidden flex-1 flex flex-col">
         
         <!-- Minimalist Navbar -->
@@ -101,14 +98,14 @@
         <!-- Main Content Area -->
         <main id="main-container" class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1">
             
-            <!-- Print Header (Hanya muncul saat cetak PDF) -->
+            <!-- Print Header -->
             <div class="print-header">
                 <h1 style="font-size: 18px; font-weight: bold; margin-bottom: 2px;">KARTU INVENTARIS BARANG (KIB A) - TANAH</h1>
                 <h2 style="font-size: 14px; margin-bottom: 2px;">PEMERINTAH DESA BALEADI</h2>
                 <hr style="border-top: 1px solid #000; margin-top: 8px; margin-bottom: 12px;">
             </div>
 
-            <!-- Stats Ringkas Pastel -->
+            <!-- Stats Ringkas -->
             <div id="stats-container" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center space-x-4">
                     <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl">
@@ -141,15 +138,13 @@
                 </div>
             </div>
 
-            <!-- Action Bar & Search Input -->
+            <!-- Action Bar -->
             <div id="action-bar" class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
-                <!-- Search Box -->
                 <div class="relative w-full md:w-80">
                     <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
                     <input type="text" id="search-input" oninput="filterTable()" placeholder="Cari nama, alamat, atau sertifikat..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-sky-500 focus:bg-white transition">
                 </div>
                 
-                <!-- Buttons -->
                 <div class="flex items-center space-x-2 w-full md:w-auto justify-end">
                     <button onclick="openModal()" class="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition shadow-sm flex items-center space-x-1.5">
                         <i class="fa-solid fa-plus"></i>
@@ -162,7 +157,7 @@
                 </div>
             </div>
 
-            <!-- Minimalist Table Container -->
+            <!-- Table Container -->
             <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
                 <div class="overflow-x-auto w-full">
                     <table class="w-full text-left border-collapse min-w-[950px]">
@@ -187,7 +182,6 @@
                     </table>
                 </div>
             </div>
-
         </main>
 
         <footer id="footer" class="py-4 text-center text-xs text-slate-400 border-t border-slate-200/60 mt-auto bg-white">
@@ -198,7 +192,6 @@
     <!-- MODAL FORM -->
     <div id="form-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-slate-100">
-            <!-- Modal Header -->
             <div class="p-5 border-b border-slate-100 flex justify-between items-center">
                 <div class="flex items-center space-x-2">
                     <div class="w-7 h-7 bg-sky-50 text-sky-600 rounded-lg flex items-center justify-center text-xs">
@@ -211,11 +204,9 @@
                 </button>
             </div>
             
-            <!-- Modal Body -->
             <div class="p-5 overflow-y-auto flex-1">
                 <form id="data-form">
                     <input type="hidden" id="doc_id">
-                    
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                         <div class="md:col-span-2">
                             <label class="block text-[11px] font-semibold text-slate-600 mb-1">Nama Barang / Nama Tanah *</label>
@@ -274,7 +265,6 @@
                 </form>
             </div>
             
-            <!-- Modal Footer -->
             <div class="p-4 border-t border-slate-100 flex justify-end space-x-2 bg-slate-50 rounded-b-2xl">
                 <button onclick="closeModal()" class="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-100 text-xs font-semibold transition">Batal</button>
                 <button onclick="saveData()" id="btn-save" class="px-4 py-2 bg-sky-600 text-white rounded-xl hover:bg-sky-700 text-xs font-semibold transition flex items-center shadow-sm">
@@ -284,16 +274,13 @@
         </div>
     </div>
 
-    <!-- SCRIPT APPLICATION LOGIC -->
     <script>
-        // ==========================================
-        // KONFIGURASI URL GOOGLE APPS SCRIPT
-        // ==========================================
+        // URL Google Apps Script Web App Anda (Ganti dengan URL /exec yang valid setelah di-deploy)
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzFkkogmQamx05c3xqxwAstebQDLE_U_DWwQDIE_pIUkIz9O3wQpLZX75zIki-rypg2iw/exec"; 
         
         let inventoryData = {};
 
-        // Data Mock Demo jika GAS_URL belum diset / offline mode
+        // Mock data otomatis sebagai fallback jika URL GAS kosong / offline / CORS sandbox terbatas
         const mockData = {
             "demo_1": {
                 nama: "Tanah Kas Desa Balai Desa",
@@ -325,18 +312,10 @@
             }
         };
 
-        // === PWA MANIFEST INJECTION ===
-        const manifestStr = `{"name":"KIB A Baleadi","short_name":"KIB A","start_url":".","display":"standalone","background_color":"#f8fafc","theme_color":"#0ea5e9","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/3061/3061341.png","sizes":"512x512","type":"image/png"}]}`;
-        const blob = new Blob([manifestStr], {type: 'application/json'});
-        const manifestURL = URL.createObjectURL(blob);
-        document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="${manifestURL}">`);
-
-        // === NOTIFIKASI TOAST ===
         const Toast = Swal.mixin({
             toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true
         });
 
-        // === SANITASI XSS ===
         function escapeHTML(str) {
             if(!str || str === '') return '-';
             return str.toString().replace(/[&<>'"]/g, 
@@ -344,12 +323,10 @@
             );
         }
 
-        // === FORMAT RUPIAH ===
         function formatRupiah(angka) {
             return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0);
         }
 
-        // === INIT APPLICATION ===
         window.onload = () => {
             const isLogged = sessionStorage.getItem('kib_logged_in');
             if (isLogged) {
@@ -359,7 +336,6 @@
             }
         };
 
-        // === LOGIN HANDLER ===
         function handleLogin(e) {
             e.preventDefault();
             const btn = document.getElementById('btn-login');
@@ -368,13 +344,13 @@
             btn.innerHTML = '<div class="loader ease-linear rounded-full border-2 border-t-2 border-white h-4 w-4 mx-auto"></div>';
             btn.disabled = true;
 
-            // Jika URL GAS belum diganti, gunakan mode demo/lokal agar password '789' langsung sukses
-            if (GAS_URL.includes("XXXXXXXXXXXX")) {
+            // Jika URL salah atau belum diset, gunakan mode demo langsung
+            if (!GAS_URL || GAS_URL.includes("XXXXXXXX") || GAS_URL.startsWith("hhttps://")) {
                 setTimeout(() => {
                     if(pass === '789') {
                         sessionStorage.setItem('kib_logged_in', 'true');
                         sessionStorage.setItem('kib_passcode', pass);
-                        Toast.fire({ icon: 'success', title: 'Login berhasil! (Mode Demo)' });
+                        Toast.fire({ icon: 'success', title: 'Login Berhasil! (Mode Demo)' });
                         document.getElementById('login-page').classList.add('hidden');
                         document.getElementById('dashboard-page').classList.remove('hidden');
                         inventoryData = mockData;
@@ -384,10 +360,11 @@
                     }
                     btn.innerHTML = 'Masuk ke Sistem';
                     btn.disabled = false;
-                }, 600);
+                }, 500);
                 return;
             }
 
+            // Melakukan fetch ke GAS dengan mode no-cors jika diperlukan atau tangkap error
             fetch(GAS_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -407,14 +384,18 @@
                 }
             })
             .catch(err => {
-                console.error("Fetch error:", err);
-                Swal.fire('Catatan Koneksi', 'Gagal menghubungkan ke URL GAS. Masuk otomatis menggunakan Mode Demo.', 'info');
-                sessionStorage.setItem('kib_logged_in', 'true');
-                sessionStorage.setItem('kib_passcode', pass);
-                document.getElementById('login-page').classList.add('hidden');
-                document.getElementById('dashboard-page').classList.remove('hidden');
-                inventoryData = mockData;
-                renderTable(inventoryData);
+                console.warn("Koneksi GAS diblokir browser/CORS, menggunakan Mode Demo:", err);
+                if(pass === '789') {
+                    sessionStorage.setItem('kib_logged_in', 'true');
+                    sessionStorage.setItem('kib_passcode', pass);
+                    Toast.fire({ icon: 'success', title: 'Login Berhasil! (Mode Demo Aktif)' });
+                    document.getElementById('login-page').classList.add('hidden');
+                    document.getElementById('dashboard-page').classList.remove('hidden');
+                    inventoryData = mockData;
+                    renderTable(inventoryData);
+                } else {
+                    Swal.fire('Gagal!', 'Password salah. (Default: 789)', 'error');
+                }
             })
             .finally(() => {
                 btn.innerHTML = 'Masuk ke Sistem';
@@ -428,15 +409,14 @@
             location.reload();
         }
 
-        // === READ DATA DARI GAS ===
         function fetchData() {
             document.getElementById('table-body').innerHTML = `<tr><td colspan="9" class="p-8 text-center text-sky-600"><div class="loader ease-linear rounded-full border-3 border-t-3 border-slate-200 h-8 w-8 mx-auto mb-2"></div>Memuat data aset...</td></tr>`;
             
-            if (GAS_URL.includes("XXXXXXXXXXXX")) {
+            if (!GAS_URL || GAS_URL.includes("XXXXXXXX") || GAS_URL.startsWith("hhttps://")) {
                 setTimeout(() => {
                     inventoryData = mockData;
                     renderTable(inventoryData);
-                }, 400);
+                }, 300);
                 return;
             }
 
@@ -457,7 +437,6 @@
             });
         }
 
-        // === RENDER TABEL & INSTANT SEARCH ===
         function filterTable() {
             const query = document.getElementById('search-input').value.toLowerCase();
             const filtered = {};
@@ -529,7 +508,6 @@
             document.getElementById('stat-harga').innerText = formatRupiah(totalHarga);
         }
 
-        // === MODAL CONTROL ===
         function openModal() {
             document.getElementById('data-form').reset();
             document.getElementById('doc_id').value = '';
@@ -561,7 +539,6 @@
             document.getElementById('form-modal').classList.remove('hidden');
         }
 
-        // === SIMPAN DATA (CREATE / UPDATE) VIA GAS ===
         function saveData() {
             const form = document.getElementById('data-form');
             if(!form.checkValidity()) { form.reportValidity(); return; }
@@ -582,8 +559,7 @@
                 harga: document.getElementById('f_harga').value
             };
 
-            // Jika mode demo aktif
-            if (GAS_URL.includes("XXXXXXXXXXXX")) {
+            if (!GAS_URL || GAS_URL.includes("XXXXXXXX") || GAS_URL.startsWith("hhttps://")) {
                 const targetId = id || ('demo_' + Date.now());
                 inventoryData[targetId] = newData;
                 Toast.fire({ icon: 'success', title: 'Data tersimpan (Mode Demo)!' });
@@ -620,7 +596,6 @@
                 }
             })
             .catch(err => {
-                // Fallback demo jika fetch gagal
                 const targetId = id || ('demo_' + Date.now());
                 inventoryData[targetId] = newData;
                 Toast.fire({ icon: 'success', title: 'Data tersimpan secara lokal!' });
@@ -630,7 +605,6 @@
             .finally(() => { btn.innerHTML = originalText; btn.disabled = false; });
         }
 
-        // === HAPUS DATA VIA GAS ===
         function hapusData(id) {
             Swal.fire({
                 title: 'Hapus Aset Ini?', 
@@ -643,7 +617,7 @@
                 cancelButtonText: 'Batal'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    if (GAS_URL.includes("XXXXXXXXXXXX")) {
+                    if (!GAS_URL || GAS_URL.includes("XXXXXXXX") || GAS_URL.startsWith("hhttps://")) {
                         delete inventoryData[id];
                         Toast.fire({ icon: 'success', title: 'Data berhasil dihapus!' });
                         renderTable(inventoryData);
