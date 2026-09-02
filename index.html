@@ -1,474 +1,523 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistem Administrasi & Aset Desa Baleadi</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- SweetAlert2 -->
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventaris Tanah (KIB A) - Desa Baleadi</title>
+    
+    <!-- Tailwind CSS (Desain Hijau Zamrud) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        emerald: { 500: '#10b981', 600: '#059669', 700: '#047857', 900: '#064e3b' },
+                        gold: '#f59e0b'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- FontAwesome & SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
-  <style>
-    /* STYLE KHUSUS CETAK PDF / PRINT */
-    @media print {
-      aside, header, .no-print, button, input {
-        display: none !important;
-      }
-      body {
-        background: white !important;
-        color: black !important;
-      }
-      main {
-        overflow: visible !important;
-        padding: 0 !important;
-      }
-      .print-header {
-        display: block !important;
-      }
-      .shadow-sm, .border {
-        box-shadow: none !important;
-        border: none !important;
-      }
-      table {
-        width: 100% !important;
-        border-collapse: collapse !important;
-        font-size: 11pt !important;
-      }
-      th, td {
-        border: 1px solid #94a3b8 !important;
-        padding: 6px 10px !important;
-      }
-      .action-col {
-        display: none !important;
-      }
-    }
-    .print-header {
-      display: none;
-    }
-  </style>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        
+        /* PWA Install Prompt / Print Styles */
+        @media print {
+            body { background-color: #fff; }
+            #sidebar, #topbar, #btn-add, #btn-print, .action-col, .login-container { display: none !important; }
+            #main-content { margin-left: 0 !important; width: 100% !important; padding: 0 !important; }
+            .print-header { display: block !important; text-align: center; margin-bottom: 20px; }
+            .card-stats { display: none !important; }
+            table { width: 100%; border-collapse: collapse; font-size: 11px; }
+            th, td { border: 1px solid #000 !important; padding: 6px !important; color: #000 !important; }
+            .shadow-md { box-shadow: none !important; }
+        }
+        
+        .print-header { display: none; }
+        .loader { border-top-color: #10b981; -webkit-animation: spinner 1.5s linear infinite; animation: spinner 1.5s linear infinite; }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans antialiased">
+<body class="text-gray-800">
 
-  <div class="flex h-screen overflow-hidden">
-    <!-- SIDEBAR -->
-    <aside class="w-64 bg-slate-900 text-slate-300 flex flex-col justify-between shrink-0 no-print">
-      <div>
-        <div class="p-6 border-b border-slate-800 flex items-center space-x-3">
-          <div class="bg-emerald-600 text-white p-2 rounded-lg">
-            <i data-lucide="building-2" class="w-6 h-6"></i>
-          </div>
-          <div>
-            <h1 class="font-bold text-white text-base leading-tight">Pemdes Baleadi</h1>
-            <p class="text-xs text-slate-400">Sistem Aset Internal</p>
-          </div>
+    <!-- LOGIN PAGE -->
+    <div id="login-page" class="min-h-screen flex items-center justify-center bg-emerald-900 login-container">
+        <div class="bg-white p-8 rounded-lg shadow-2xl w-96 max-w-full">
+            <div class="text-center mb-6">
+                <i class="fa-solid fa-seedling text-4xl text-emerald-600 mb-2"></i>
+                <h2 class="text-2xl font-bold text-gray-800">SIM ASET DESA</h2>
+                <p class="text-sm text-gray-500">Inventaris Tanah (KIB A) Baleadi</p>
+            </div>
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Password Admin</label>
+                    <input type="password" id="password" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-emerald-500" placeholder="Masukkan password..." required>
+                </div>
+                <button type="submit" id="btn-login" class="w-full bg-emerald-600 text-white font-bold py-2 px-4 rounded hover:bg-emerald-700 transition">
+                    Masuk
+                </button>
+            </form>
+            <div class="mt-4 text-center text-xs text-gray-400">sarjanasoft web builder</div>
         </div>
+    </div>
 
-        <!-- NAVIGASI -->
-        <nav class="p-4 space-y-1">
-          <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition bg-emerald-600 text-white">
-            <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
-            <span>Dashboard</span>
-          </button>
-          <button onclick="switchTab('assets')" id="nav-assets" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition hover:bg-slate-800 hover:text-white">
-            <i data-lucide="box" class="w-5 h-5"></i>
-            <span>Kelola Aset</span>
-          </button>
-        </nav>
-      </div>
+    <!-- DASHBOARD PAGE (Hidden by default) -->
+    <div id="dashboard-page" class="hidden flex h-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <aside id="sidebar" class="bg-emerald-900 text-white w-64 flex-shrink-0 hidden md:flex flex-col transition-all duration-300">
+            <div class="p-4 flex items-center border-b border-emerald-800">
+                <i class="fa-solid fa-seedling text-2xl text-gold mr-3"></i>
+                <span class="font-bold text-lg tracking-wider">KIB A Baleadi</span>
+            </div>
+            <nav class="flex-1 p-4 space-y-2">
+                <a href="#" class="block px-4 py-2 bg-emerald-800 rounded text-white"><i class="fa-solid fa-map-location-dot mr-2"></i> Data Tanah</a>
+            </nav>
+            <div class="p-4 border-t border-emerald-800">
+                <button onclick="logout()" class="w-full flex items-center px-4 py-2 text-sm text-red-300 hover:bg-red-800 hover:text-white rounded transition">
+                    <i class="fa-solid fa-right-from-bracket mr-2"></i> Keluar
+                </button>
+            </div>
+        </aside>
 
-      <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
-        Pemerintah Desa Baleadi &copy; 2026
-      </div>
-    </aside>
+        <!-- Main Content -->
+        <div id="main-content" class="flex-1 flex flex-col overflow-y-auto">
+            
+            <!-- Topbar (Mobile support) -->
+            <header id="topbar" class="bg-white shadow-sm p-4 flex justify-between items-center md:hidden">
+                <div class="flex items-center font-bold text-emerald-800">
+                    <i class="fa-solid fa-seedling text-gold mr-2"></i> KIB A Baleadi
+                </div>
+                <button onclick="logout()" class="text-red-500"><i class="fa-solid fa-power-off"></i></button>
+            </header>
 
-    <!-- MAIN CONTENT -->
-    <main class="flex-1 overflow-y-auto bg-slate-50">
-      <!-- HEADER APPLIKASI -->
-      <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10 no-print">
-        <h2 id="page-title" class="text-xl font-bold text-slate-800">Dashboard Admin</h2>
-        <div class="flex items-center space-x-3">
-          <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span> Mode Admin Active
-          </span>
+            <main class="p-4 md:p-6 flex-1">
+                
+                <!-- Print Header (Only visible on print) -->
+                <div class="print-header">
+                    <h1 style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">KARTU INVENTARIS BARANG (KIB A) - TANAH</h1>
+                    <h2 style="font-size: 14px; margin-bottom: 2px;">PEMERINTAH DESA BALEADI</h2>
+                    <hr style="border-top: 2px solid #000; margin-top: 10px; margin-bottom: 10px;">
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 card-stats">
+                    <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-emerald-500 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500 font-semibold">Total Bidang Tanah</p>
+                            <h3 class="text-2xl font-bold text-gray-800" id="stat-total">0</h3>
+                        </div>
+                        <i class="fa-solid fa-map text-3xl text-emerald-200"></i>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-gold flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500 font-semibold">Total Luas (m²)</p>
+                            <h3 class="text-2xl font-bold text-gray-800" id="stat-luas">0</h3>
+                        </div>
+                        <i class="fa-solid fa-expand text-3xl text-yellow-200"></i>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500 font-semibold">Total Nilai Aset (Rp)</p>
+                            <h3 class="text-xl font-bold text-gray-800" id="stat-harga">0</h3>
+                        </div>
+                        <i class="fa-solid fa-coins text-3xl text-blue-200"></i>
+                    </div>
+                </div>
+
+                <!-- Data Section -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="p-4 flex flex-col md:flex-row justify-between items-center border-b border-gray-200 bg-gray-50">
+                        <h2 class="text-lg font-bold text-gray-700 mb-3 md:mb-0">Daftar Inventaris Tanah</h2>
+                        <div class="flex space-x-2">
+                            <button id="btn-add" onclick="openModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm font-semibold transition shadow">
+                                <i class="fa-solid fa-plus mr-1"></i> Tambah Data
+                            </button>
+                            <button id="btn-print" onclick="window.print()" class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded text-sm font-semibold transition shadow">
+                                <i class="fa-solid fa-print mr-1"></i> Cetak PDF
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto w-full">
+                        <table class="w-full text-left border-collapse min-w-[1000px]">
+                            <thead>
+                                <tr class="bg-emerald-100 text-emerald-900 text-xs uppercase">
+                                    <th class="p-3 border-b border-emerald-200">No</th>
+                                    <th class="p-3 border-b border-emerald-200">Nama Barang</th>
+                                    <th class="p-3 border-b border-emerald-200">Kode/Register</th>
+                                    <th class="p-3 border-b border-emerald-200">Luas (m²)</th>
+                                    <th class="p-3 border-b border-emerald-200">Letak/Alamat</th>
+                                    <th class="p-3 border-b border-emerald-200">Hak & Sertifikat</th>
+                                    <th class="p-3 border-b border-emerald-200">Asal Usul</th>
+                                    <th class="p-3 border-b border-emerald-200 text-right">Harga (Rp)</th>
+                                    <th class="p-3 border-b border-emerald-200 action-col text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body" class="text-sm">
+                                <!-- Data inject here -->
+                                <tr><td colspan="9" class="p-8 text-center text-gray-500">Memuat data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </main>
         </div>
-      </header>
+    </div>
 
-      <div class="p-8">
-        <!-- HEADER KOP LAPORAN (HANYA MUNCUL SAAT DICETAK) -->
-        <div class="print-header mb-6 text-center border-b border-slate-300 pb-4">
-          <h1 class="text-xl font-bold uppercase tracking-wide">Pemerintah Desa Baleadi</h1>
-          <h2 class="text-lg font-semibold text-slate-700">Laporan Inventarisasi & Aset Desa</h2>
-          <p class="text-xs text-slate-500 mt-1" id="printDate"></p>
-        </div>
-
-        <!-- TAB: DASHBOARD -->
-        <section id="section-dashboard" class="tab-content space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Item Aset</span>
-                <i data-lucide="boxes" class="w-5 h-5 text-emerald-600"></i>
-              </div>
-              <p id="stat-total" class="text-3xl font-bold text-slate-800 mt-2">0</p>
-            </div>
-
-            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Kondisi Baik</span>
-                <i data-lucide="check-circle-2" class="w-5 h-5 text-blue-600"></i>
-              </div>
-              <p id="stat-good" class="text-3xl font-bold text-blue-600 mt-2">0</p>
-            </div>
-
-            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Rusak / Perbaikan</span>
-                <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600"></i>
-              </div>
-              <p id="stat-damaged" class="text-3xl font-bold text-amber-600 mt-2">0</p>
-            </div>
-
-            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Estimasi Nilai</span>
-                <i data-lucide="coins" class="w-5 h-5 text-purple-600"></i>
-              </div>
-              <p id="stat-value" class="text-2xl font-bold text-slate-800 mt-2">Rp 0</p>
-            </div>
-          </div>
-        </section>
-
-        <!-- TAB: KELOLA ASET -->
-        <section id="section-assets" class="tab-content hidden space-y-6">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
-            <div class="relative flex-1 max-w-md">
-              <i data-lucide="search" class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-              <input type="text" id="searchInput" onkeyup="filterAssets()" placeholder="Cari nama aset, kode, atau kategori..." class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+    <!-- MODAL FORM -->
+    <div id="form-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
+            <div class="p-4 border-b flex justify-between items-center bg-emerald-50 rounded-t-lg">
+                <h3 class="font-bold text-lg text-emerald-800" id="modal-title">Form Data Tanah</h3>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-red-500"><i class="fa-solid fa-times text-xl"></i></button>
             </div>
             
-            <!-- TOMBOL AKSI EKSPOR & TAMBAH -->
-            <div class="flex items-center space-x-2">
-              <button onclick="exportToCSV()" class="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition">
-                <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
-                <span>Ekspor Excel</span>
-              </button>
-              <button onclick="printReport()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3.5 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition">
-                <i data-lucide="printer" class="w-4 h-4"></i>
-                <span>Cetak PDF</span>
-              </button>
-              <button onclick="openFormModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition">
-                <i data-lucide="plus" class="w-4 h-4"></i>
-                <span>Tambah Aset</span>
-              </button>
+            <div class="p-4 overflow-y-auto flex-1">
+                <form id="data-form">
+                    <input type="hidden" id="doc_id">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Barang / Tanah</label>
+                            <input type="text" id="f_nama" required class="w-full p-2 border rounded focus:border-emerald-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Penggunaan</label>
+                            <input type="text" id="f_penggunaan" class="w-full p-2 border rounded focus:border-emerald-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Kode Barang</label>
+                            <input type="text" id="f_kode" class="w-full p-2 border rounded focus:border-emerald-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">No. Register</label>
+                            <input type="text" id="f_register" class="w-full p-2 border rounded focus:border-emerald-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Luas (m²)</label>
+                            <input type="number" id="f_luas" required class="w-full p-2 border rounded focus:border-emerald-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Tahun Pengadaan</label>
+                            <input type="number" id="f_tahun" class="w-full p-2 border rounded focus:border-emerald-500 outline-none text-sm">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Letak / Alamat</label>
+                            <input type="text" id="f_letak" required class="w-full p-2 border rounded focus:border-emerald-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Hak Tanah (Status)</label>
+                            <select id="f_hak" class="w-full p-2 border rounded focus:border-emerald-500 outline-none text-sm">
+                                <option value="Hak Pakai">Hak Pakai</option>
+                                <option value="Hak Milik">Hak Milik (SHM)</option>
+                                <option value="HGB">Hak Guna Bangunan (HGB)</option>
+                                <option value="Lainnya">Lainnya</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Tanggal Sertifikat</label>
+                            <input type="date" id="f_tgl_sertifikat" class="w-full p-2 border rounded focus:border-emerald-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Nomor Sertifikat</label>
+                            <input type="text" id="f_no_sertifikat" class="w-full p-2 border rounded focus:border-emerald-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Asal Usul</label>
+                            <input type="text" id="f_asal" class="w-full p-2 border rounded focus:border-emerald-500 outline-none text-sm" placeholder="Contoh: Pembelian, Hibah">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Harga (Rp)</label>
+                            <input type="number" id="f_harga" required class="w-full p-2 border rounded focus:border-emerald-500 outline-none text-sm">
+                        </div>
+                    </div>
+                </form>
             </div>
-          </div>
-
-          <!-- TABEL ASET -->
-          <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <table class="w-full text-left text-sm">
-              <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium">
-                <tr>
-                  <th class="p-4">Kode & Nama Aset</th>
-                  <th class="p-4">Kategori</th>
-                  <th class="p-4">Jumlah</th>
-                  <th class="p-4">Kondisi</th>
-                  <th class="p-4">Estimasi Nilai</th>
-                  <th class="p-4 text-center action-col">Aksi</th>
-                </tr>
-              </thead>
-              <tbody id="assetTableBody" class="divide-y divide-slate-100">
-                <tr>
-                  <td colspan="6" class="p-8 text-center text-slate-400">Memuat data aset...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-    </main>
-  </div>
-
-  <!-- MODAL FORM ASET -->
-  <div id="assetModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50 p-4 no-print">
-    <div class="bg-white rounded-xl max-w-lg w-full p-6 shadow-xl space-y-4">
-      <div class="flex items-center justify-between border-b pb-3">
-        <h3 id="modalTitle" class="text-lg font-bold text-slate-800">Tambah Data Aset</h3>
-        <button onclick="closeFormModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
-      </div>
-
-      <form id="assetForm" onsubmit="handleFormSubmit(event)" class="space-y-3">
-        <input type="hidden" id="formRowIndex">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Kode Aset</label>
-          <input type="text" id="formCode" required class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+            
+            <div class="p-4 border-t flex justify-end space-x-2 bg-gray-50 rounded-b-lg">
+                <button onclick="closeModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-sm font-semibold transition">Batal</button>
+                <button onclick="saveData()" id="btn-save" class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-sm font-semibold transition flex items-center">
+                    Simpan Data
+                </button>
+            </div>
         </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nama Aset</label>
-          <input type="text" id="formName" required class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Kategori</label>
-            <input type="text" id="formCategory" placeholder="Elektronik, Bangunan, dll." required class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Jumlah</label>
-            <input type="number" id="formQuantity" min="1" value="1" required class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Kondisi</label>
-            <select id="formCondition" class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-              <option value="Baik">Baik</option>
-              <option value="Rusak Ringan">Rusak Ringan</option>
-              <option value="Rusak Berat">Rusak Berat</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nilai Satuan (Rp)</label>
-            <input type="number" id="formValue" value="0" class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-          </div>
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Keterangan / Lokasi</label>
-          <textarea id="formDescription" rows="2" class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"></textarea>
-        </div>
-
-        <div class="flex justify-end space-x-2 border-t pt-4">
-          <button type="button" onclick="closeFormModal()" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-100">Batal</button>
-          <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">Simpan Data</button>
-        </div>
-      </form>
     </div>
-  </div>
 
-  <script>
-    let globalAssetData = [];
+    <!-- Script Utama -->
+    <script>
+        // ==========================================
+        // KONFIGURASI PENTING (UBAH URL INI)
+        // ==========================================
+        // Masukkan URL Web App dari Google Apps Script di bawah ini
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyp7MBiz68eEaIRyKoxHF7z4VeftovqVuwsWk3j9gECfEAHOzt7Kp5qFEAPcus7vR0Q_Q/exec"; 
+        
+        let inventoryData = {};
 
-    document.addEventListener('DOMContentLoaded', function() {
-      lucide.createIcons();
-      loadDashboardStats();
-      loadAssetData();
-    });
+        // === PWA SETUP (Virtual Manifest) ===
+        const manifestStr = `{"name":"KIB A Baleadi","short_name":"KIB A","start_url":".","display":"standalone","background_color":"#064e3b","theme_color":"#10b981","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/3061/3061341.png","sizes":"512x512","type":"image/png"}]}`;
+        const blob = new Blob([manifestStr], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(blob);
+        document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="${manifestURL}">`);
 
-    function switchTab(tab) {
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-      document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.remove('bg-emerald-600', 'text-white');
-        btn.classList.add('hover:bg-slate-800', 'hover:text-white');
-      });
+        // === NOTIFIKASI TOAST (SweetAlert) ===
+        const Toast = Swal.mixin({
+            toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true
+        });
 
-      if (tab === 'dashboard') {
-        document.getElementById('section-dashboard').classList.remove('hidden');
-        document.getElementById('nav-dashboard').classList.add('bg-emerald-600', 'text-white');
-        document.getElementById('page-title').innerText = 'Dashboard Admin';
-      } else if (tab === 'assets') {
-        document.getElementById('section-assets').classList.remove('hidden');
-        document.getElementById('nav-assets').classList.add('bg-emerald-600', 'text-white');
-        document.getElementById('page-title').innerText = 'Pengelolaan Aset Desa';
-      }
-    }
-
-    function loadDashboardStats() {
-      google.script.run.withSuccessHandler(function(stats) {
-        document.getElementById('stat-total').innerText = stats.totalAssets;
-        document.getElementById('stat-good').innerText = stats.goodCondition;
-        document.getElementById('stat-damaged').innerText = stats.damagedCondition;
-        document.getElementById('stat-value').innerText = 'Rp ' + Number(stats.totalValue).toLocaleString('id-ID');
-      }).getDashboardStats();
-    }
-
-    function loadAssetData() {
-      google.script.run.withSuccessHandler(function(data) {
-        globalAssetData = data;
-        renderAssetTable(data);
-      }).getAssetData();
-    }
-
-    function renderAssetTable(data) {
-      const tbody = document.getElementById('assetTableBody');
-      if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400">Belum ada data aset terdaftar.</td></tr>`;
-        return;
-      }
-
-      tbody.innerHTML = data.map(item => `
-        <tr class="hover:bg-slate-50 transition">
-          <td class="p-4">
-            <div class="font-bold text-slate-800">${item.name}</div>
-            <div class="text-xs text-slate-400">${item.code}</div>
-          </td>
-          <td class="p-4 text-slate-600">${item.category}</td>
-          <td class="p-4 font-semibold text-slate-700">${item.quantity}</td>
-          <td class="p-4">
-            <span class="px-2 py-1 rounded-full text-xs font-semibold ${
-              item.condition === 'Baik' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-            }">${item.condition}</span>
-          </td>
-          <td class="p-4 text-slate-700 font-medium">Rp ${Number(item.value).toLocaleString('id-ID')}</td>
-          <td class="p-4 text-center action-col">
-            <div class="flex justify-center space-x-2">
-              <button onclick="editAsset(${item.rowIndex})" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-              <button onclick="deleteAsset(${item.rowIndex})" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-            </div>
-          </td>
-        </tr>
-      `).join('');
-      
-      lucide.createIcons();
-    }
-
-    function filterAssets() {
-      const keyword = document.getElementById('searchInput').value.toLowerCase();
-      const filtered = globalAssetData.filter(item => 
-        item.name.toLowerCase().includes(keyword) ||
-        item.code.toLowerCase().includes(keyword) ||
-        item.category.toLowerCase().includes(keyword)
-      );
-      renderAssetTable(filtered);
-    }
-
-    /* --- FUNGSI EKSPOR EXCEL (CSV) --- */
-    function exportToCSV() {
-      if (!globalAssetData || globalAssetData.length === 0) {
-        Swal.fire('Perhatian', 'Tidak ada data aset untuk diekspor.', 'warning');
-        return;
-      }
-
-      // UTF-8 BOM agar Excel membaca format bahasa & karakter dengan benar
-      let csvContent = "\uFEFF";
-      csvContent += "Kode Aset;Nama Aset;Kategori;Jumlah;Kondisi;Nilai Satuan (Rp);Total Nilai (Rp);Keterangan\n";
-
-      globalAssetData.forEach(item => {
-        const totalValue = (Number(item.quantity) || 1) * (Number(item.value) || 0);
-        const row = [
-          `"${(item.code || '').replace(/"/g, '""')}"`,
-          `"${(item.name || '').replace(/"/g, '""')}"`,
-          `"${(item.category || '').replace(/"/g, '""')}"`,
-          item.quantity,
-          `"${item.condition}"`,
-          item.value,
-          totalValue,
-          `"${(item.description || '').replace(/"/g, '""')}"`
-        ];
-        csvContent += row.join(";") + "\n";
-      });
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      const today = new Date().toISOString().split('T')[0];
-      
-      link.setAttribute("href", url);
-      link.setAttribute("download", `Laporan_Aset_Desa_Baleadi_${today}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    /* --- FUNGSI CETAK PDF / PRINT --- */
-    function printReport() {
-      if (document.getElementById('section-assets').classList.contains('hidden')) {
-        switchTab('assets');
-      }
-
-      const today = new Date().toLocaleDateString('id-ID', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-      });
-      document.getElementById('printDate').innerText = 'Tanggal Cetak: ' + today;
-
-      window.print();
-    }
-
-    function openFormModal(editData = null) {
-      document.getElementById('assetForm').reset();
-      document.getElementById('formRowIndex').value = '';
-      
-      if (editData) {
-        document.getElementById('modalTitle').innerText = 'Edit Data Aset';
-        document.getElementById('formRowIndex').value = editData.rowIndex;
-        document.getElementById('formCode').value = editData.code;
-        document.getElementById('formName').value = editData.name;
-        document.getElementById('formCategory').value = editData.category;
-        document.getElementById('formQuantity').value = editData.quantity;
-        document.getElementById('formCondition').value = editData.condition;
-        document.getElementById('formValue').value = editData.value;
-        document.getElementById('formDescription').value = editData.description;
-      } else {
-        document.getElementById('modalTitle').innerText = 'Tambah Data Aset Baru';
-        document.getElementById('formCode').value = 'AST-' + Math.floor(1000 + Math.random() * 9000);
-      }
-
-      document.getElementById('assetModal').classList.remove('hidden');
-      document.getElementById('assetModal').classList.add('flex');
-    }
-
-    function closeFormModal() {
-      document.getElementById('assetModal').classList.add('hidden');
-      document.getElementById('assetModal').classList.remove('flex');
-    }
-
-    function handleFormSubmit(e) {
-      e.preventDefault();
-      
-      const payload = {
-        rowIndex: document.getElementById('formRowIndex').value,
-        code: document.getElementById('formCode').value,
-        name: document.getElementById('formName').value,
-        category: document.getElementById('formCategory').value,
-        quantity: document.getElementById('formQuantity').value,
-        condition: document.getElementById('formCondition').value,
-        value: document.getElementById('formValue').value,
-        description: document.getElementById('formDescription').value
-      };
-
-      Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-      google.script.run.withSuccessHandler(function(res) {
-        if (res.success) {
-          Swal.fire({ icon: 'success', title: 'Berhasil!', text: res.message, timer: 1500, showConfirmButton: false });
-          closeFormModal();
-          loadAssetData();
-          loadDashboardStats();
-        } else {
-          Swal.fire({ icon: 'error', title: 'Gagal', text: res.message });
+        // === SANITASI XSS (Keamanan Frontend) ===
+        function escapeHTML(str) {
+            if(!str) return '-';
+            return str.toString().replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag])
+            );
         }
-      }).saveAssetData(payload);
-    }
 
-    function editAsset(rowIndex) {
-      const item = globalAssetData.find(a => a.rowIndex === rowIndex);
-      if (item) openFormModal(item);
-    }
+        // === FORMAT RUPIAH ===
+        function formatRupiah(angka) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0);
+        }
 
-    function deleteAsset(rowIndex) {
-      Swal.fire({
-        title: 'Hapus Data Aset?',
-        text: 'Tindakan ini tidak dapat dibatalkan.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#e11d48',
-        confirmButtonText: 'Ya, Hapus',
-        cancelButtonText: 'Batal'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          Swal.fire({ title: 'Menghapus...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-          google.script.run.withSuccessHandler(function(res) {
-            if (res.success) {
-              Swal.fire({ icon: 'success', title: 'Terhapus!', text: res.message, timer: 1500, showConfirmButton: false });
-              loadAssetData();
-              loadDashboardStats();
-            } else {
-              Swal.fire({ icon: 'error', title: 'Gagal', text: res.message });
+        // === INIT & LOGIN ===
+        window.onload = () => {
+            const isLogged = sessionStorage.getItem('kib_logged_in');
+            if (isLogged) {
+                document.getElementById('login-page').classList.add('hidden');
+                document.getElementById('dashboard-page').classList.remove('hidden');
+                fetchData();
             }
-          }).deleteAssetData(rowIndex);
+        };
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-login');
+            const pass = document.getElementById('password').value;
+            
+            btn.innerHTML = '<div class="loader ease-linear rounded-full border-2 border-t-2 border-gray-200 h-5 w-5 mx-auto"></div>';
+            btn.disabled = true;
+
+            // Memverifikasi via GAS 
+            fetch(GAS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: 'login', passcode: pass })
+            })
+            .then(res => res.json())
+            .then(res => {
+                if(res.success) {
+                    sessionStorage.setItem('kib_logged_in', 'true');
+                    sessionStorage.setItem('kib_passcode', pass);
+                    Toast.fire({ icon: 'success', title: 'Login berhasil!' });
+                    document.getElementById('login-page').classList.add('hidden');
+                    document.getElementById('dashboard-page').classList.remove('hidden');
+                    fetchData();
+                } else {
+                    Swal.fire('Gagal!', 'Password salah.', 'error');
+                }
+            })
+            .catch(err => {
+                Swal.fire('Error!', 'Gagal menghubungi server.', 'error');
+                console.error(err);
+            })
+            .finally(() => {
+                btn.innerHTML = 'Masuk';
+                btn.disabled = false;
+            });
         }
-      });
-    }
-  </script>
+
+        function logout() {
+            sessionStorage.removeItem('kib_logged_in');
+            sessionStorage.removeItem('kib_passcode');
+            location.reload();
+        }
+
+        // === FETCH DATA DARI GAS ===
+        function fetchData() {
+            document.getElementById('table-body').innerHTML = `<tr><td colspan="9" class="p-8 text-center text-emerald-600"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-10 w-10 mx-auto mb-2"></div>Mengambil data aman dari server...</td></tr>`;
+            
+            const pass = sessionStorage.getItem('kib_passcode');
+            fetch(`${GAS_URL}?action=read&passcode=${pass}`)
+            .then(res => res.json())
+            .then(data => {
+                if(data.error) {
+                    logout(); return;
+                }
+                inventoryData = data || {};
+                renderTable();
+            })
+            .catch(err => {
+                document.getElementById('table-body').innerHTML = `<tr><td colspan="9" class="p-4 text-center text-red-500">Gagal memuat data. Periksa koneksi atau URL GAS.</td></tr>`;
+                console.error(err);
+            });
+        }
+
+        // === RENDER TABEL & STATISTIK ===
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            
+            let totalLuas = 0;
+            let totalHarga = 0;
+            let count = 0;
+
+            for (const key in inventoryData) {
+                const item = inventoryData[key];
+                count++;
+                totalLuas += Number(item.luas || 0);
+                totalHarga += Number(item.harga || 0);
+
+                const tr = document.createElement('tr');
+                tr.className = "border-b hover:bg-gray-50 transition";
+                tr.innerHTML = `
+                    <td class="p-3">${count}</td>
+                    <td class="p-3 font-semibold text-gray-700">${escapeHTML(item.nama)}<br><span class="text-xs text-gray-500 font-normal">Guna: ${escapeHTML(item.penggunaan)}</span></td>
+                    <td class="p-3 text-xs">Kode: ${escapeHTML(item.kode)}<br>Reg: ${escapeHTML(item.register)}</td>
+                    <td class="p-3">${escapeHTML(item.luas)}</td>
+                    <td class="p-3">${escapeHTML(item.letak)}</td>
+                    <td class="p-3 text-xs">Hak: ${escapeHTML(item.hak)}<br>No: ${escapeHTML(item.no_sertifikat)}</td>
+                    <td class="p-3">${escapeHTML(item.asal)}<br><span class="text-xs text-gray-500">${escapeHTML(item.tahun)}</span></td>
+                    <td class="p-3 text-right font-semibold text-blue-700 whitespace-nowrap">${formatRupiah(item.harga)}</td>
+                    <td class="p-3 action-col text-center whitespace-nowrap">
+                        <button onclick="editData('${key}')" class="text-emerald-500 hover:text-emerald-700 mx-1 bg-emerald-100 p-1.5 rounded"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="hapusData('${key}')" class="text-red-500 hover:text-red-700 mx-1 bg-red-100 p-1.5 rounded"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            }
+
+            if(count === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-gray-500">Belum ada data KIB A Tanah.</td></tr>`;
+            }
+
+            document.getElementById('stat-total').innerText = count;
+            document.getElementById('stat-luas').innerText = totalLuas.toLocaleString('id-ID');
+            document.getElementById('stat-harga').innerText = formatRupiah(totalHarga);
+        }
+
+        // === MODAL CONTROL ===
+        function openModal() {
+            document.getElementById('data-form').reset();
+            document.getElementById('doc_id').value = '';
+            document.getElementById('modal-title').innerText = 'Tambah Data KIB A (Tanah)';
+            document.getElementById('form-modal').classList.remove('hidden');
+        }
+        
+        function closeModal() {
+            document.getElementById('form-modal').classList.add('hidden');
+        }
+
+        function editData(id) {
+            const item = inventoryData[id];
+            document.getElementById('doc_id').value = id;
+            document.getElementById('f_nama').value = item.nama || '';
+            document.getElementById('f_penggunaan').value = item.penggunaan || '';
+            document.getElementById('f_kode').value = item.kode || '';
+            document.getElementById('f_register').value = item.register || '';
+            document.getElementById('f_luas').value = item.luas || '';
+            document.getElementById('f_tahun').value = item.tahun || '';
+            document.getElementById('f_letak').value = item.letak || '';
+            document.getElementById('f_hak').value = item.hak || 'Hak Pakai';
+            document.getElementById('f_tgl_sertifikat').value = item.tgl_sertifikat || '';
+            document.getElementById('f_no_sertifikat').value = item.no_sertifikat || '';
+            document.getElementById('f_asal').value = item.asal || '';
+            document.getElementById('f_harga').value = item.harga || '';
+            
+            document.getElementById('modal-title').innerText = 'Edit Data KIB A';
+            document.getElementById('form-modal').classList.remove('hidden');
+        }
+
+        // === SAVE (ADD/UPDATE) VIA GAS ===
+        function saveData() {
+            const form = document.getElementById('data-form');
+            if(!form.checkValidity()) { form.reportValidity(); return; }
+
+            const id = document.getElementById('doc_id').value;
+            const payload = {
+                action: id ? 'update' : 'create',
+                passcode: sessionStorage.getItem('kib_passcode'),
+                id: id,
+                data: {
+                    nama: document.getElementById('f_nama').value,
+                    penggunaan: document.getElementById('f_penggunaan').value,
+                    kode: document.getElementById('f_kode').value,
+                    register: document.getElementById('f_register').value,
+                    luas: document.getElementById('f_luas').value,
+                    tahun: document.getElementById('f_tahun').value,
+                    letak: document.getElementById('f_letak').value,
+                    hak: document.getElementById('f_hak').value,
+                    tgl_sertifikat: document.getElementById('f_tgl_sertifikat').value,
+                    no_sertifikat: document.getElementById('f_no_sertifikat').value,
+                    asal: document.getElementById('f_asal').value,
+                    harga: document.getElementById('f_harga').value
+                }
+            };
+
+            const btn = document.getElementById('btn-save');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Menyimpan...';
+            btn.disabled = true;
+
+            fetch(GAS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(res => {
+                if(res.success) {
+                    Toast.fire({ icon: 'success', title: 'Data berhasil disimpan!' });
+                    closeModal();
+                    fetchData();
+                } else {
+                    Swal.fire('Gagal!', res.error || 'Terjadi kesalahan.', 'error');
+                }
+            })
+            .catch(err => Swal.fire('Error!', 'Gagal menghubungi server.', 'error'))
+            .finally(() => { btn.innerHTML = originalText; btn.disabled = false; });
+        }
+
+        // === DELETE VIA GAS ===
+        function hapusData(id) {
+            Swal.fire({
+                title: 'Hapus Data?', text: "Data tanah yang dihapus tidak dapat dikembalikan!", icon: 'warning',
+                showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#9ca3af',
+                confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const payload = {
+                        action: 'delete',
+                        passcode: sessionStorage.getItem('kib_passcode'),
+                        id: id
+                    };
+
+                    fetch(GAS_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(res => res.json())
+                    .then(res => {
+                        if(res.success) {
+                            Toast.fire({ icon: 'success', title: 'Data berhasil dihapus!' });
+                            fetchData();
+                        } else {
+                            Swal.fire('Gagal!', res.error || 'Terjadi kesalahan.', 'error');
+                        }
+                    });
+                }
+            })
+        }
+    </script>
 </body>
 </html>
+```eof
