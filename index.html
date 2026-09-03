@@ -469,6 +469,10 @@
         // URL WEB APP GOOGLE APPS SCRIPT ANDA
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbzFkkogmQamx05c3xqxwAstebQDLE_U_DWwQDIE_pIUkIz9O3wQpLZX75zIki-rypg2iw/exec'; 
         
+        // Set ke true untuk menggunakan Local Storage (menghindari error fetch di environment sandbox)
+        // Set ke false jika GAS_URL sudah valid dan ingin menggunakan backend server Google
+        const USE_MOCK_BACKEND = true; 
+        
         let inventoryData = {}; 
         let currentLaporanCategory = 'Semua';
         let itemToDelete = null;
@@ -704,7 +708,6 @@
             reader.readAsDataURL(file);
         }
 
-        // --- STREAMING_CHUNK:Sistem Utama CRUD - Komunikasi Langsung ke Google Apps Script (Backend) ---
         
         async function submitData(e, kategori) {
             e.preventDefault();
@@ -740,10 +743,23 @@
                 payloadData.foto = document.getElementById('t-base64').value;
             }
 
+            const actionType = editId ? "update" : "insert";
+
             try {
-                // Menentukan apakah ini proses update (edit) atau insert (baru)
-                const actionType = editId ? "update" : "insert";
-                
+                if (USE_MOCK_BACKEND) {
+                    await new Promise(resolve => setTimeout(resolve, 400));
+                    const newId = editId || 'local_' + Date.now();
+                    inventoryData[newId] = payloadData;
+                    localStorage.setItem('inventarisDesaBaleadi', JSON.stringify(inventoryData));
+                    
+                    showToast(editId ? 'Data berhasil diperbarui (Lokal)!' : 'Data berhasil disimpan (Lokal)!', 'success');
+                    resetForm('tanah');
+                    filterDataToTable();
+                    updateStats();
+                    openLaporan(kategori);
+                    return;
+                }
+
                 console.log("-> Mengirim instruksi ke:", GAS_URL);
                 console.log("-> Payload Data:", payloadData);
 
@@ -771,7 +787,18 @@
 
             } catch (error) { 
                 console.error("Terjadi Kesalahan Fetch POST:", error);
-                showToast('Gagal terhubung ke database server. Cek Console.', 'error'); 
+                
+                // Fallback to LocalStorage if server is unreachable
+                const newId = editId || 'local_' + Date.now();
+                inventoryData[newId] = payloadData;
+                localStorage.setItem('inventarisDesaBaleadi', JSON.stringify(inventoryData));
+                
+                showToast('Tersimpan secara lokal (Server tidak merespon)', 'warning');
+                resetForm('tanah');
+                filterDataToTable();
+                updateStats();
+                openLaporan(kategori);
+                
             } finally { 
                 btn.innerHTML = oriBtn; 
                 btn.disabled = false; 
@@ -780,15 +807,29 @@
 
         async function fetchData() {
             const tbody = document.getElementById('table-body');
-            tbody.innerHTML = `<tr><td colspan="15" class="p-8 text-center text-gray-500"><i class="fas fa-spinner fa-spin text-xl mb-2 text-emerald-500"></i><br>Sinkronisasi dengan Database Server...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="15" class="p-8 text-center text-gray-500"><i class="fas fa-spinner fa-spin text-xl mb-2 text-emerald-500"></i><br>Memuat data...</td></tr>`;
             
             try {
+                if (USE_MOCK_BACKEND) {
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    const localData = localStorage.getItem('inventarisDesaBaleadi');
+                    inventoryData = localData ? JSON.parse(localData) : {};
+                    filterDataToTable();
+                    updateStats();
+                    if (Object.keys(inventoryData).length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="15" class="p-8 text-center text-gray-400 bg-gray-50/50">Belum ada data inventaris. (Mode Lokal)</td></tr>`;
+                    }
+                    return;
+                }
+
                 // MENGAMBIL DATA DARI BACKEND GOOGLE APPS SCRIPT
                 const res = await fetch(`${GAS_URL}?action=read`);
                 const result = await res.json();
                 
                 if(result.status === 'success') {
                     inventoryData = result.data || {};
+                    // Sinkronkan ke local storage
+                    localStorage.setItem('inventarisDesaBaleadi', JSON.stringify(inventoryData));
                     filterDataToTable(); 
                     updateStats();
                     
@@ -800,7 +841,22 @@
                 }
             } catch (err) {
                 console.error("Terjadi Kesalahan Fetch GET:", err);
-                tbody.innerHTML = `<tr><td colspan="15" class="p-8 text-center text-red-500"><i class="fas fa-wifi mb-2"></i> Error jaringan. Gagal memuat data dari server.</td></tr>`;
+                
+                // Fallback to LocalStorage
+                const localData = localStorage.getItem('inventarisDesaBaleadi');
+                if (localData) {
+                    inventoryData = JSON.parse(localData);
+                } else {
+                    inventoryData = {};
+                }
+                
+                filterDataToTable();
+                updateStats();
+                
+                if (Object.keys(inventoryData).length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="15" class="p-8 text-center text-gray-400 bg-gray-50/50">Belum ada data inventaris. (Mode Lokal)</td></tr>`;
+                }
+                showToast('Mode Lokal: Gagal terhubung ke server', 'warning');
             }
         }
 
@@ -881,15 +937,28 @@
 
         document.getElementById('confirm-delete-btn').addEventListener('click', async function() {
             if(!itemToDelete) return;
+            const idToDelete = itemToDelete;
             closeDeleteModal();
             
             showToast('Menghapus data...', 'warning');
             
             try {
+                if (USE_MOCK_BACKEND) {
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    if (inventoryData[idToDelete]) {
+                        delete inventoryData[idToDelete];
+                        localStorage.setItem('inventarisDesaBaleadi', JSON.stringify(inventoryData));
+                        showToast('Data terhapus (Mode Lokal)', 'success');
+                        filterDataToTable();
+                        updateStats();
+                    }
+                    return;
+                }
+
                 // MENGHAPUS DATA DARI BACKEND GOOGLE APPS SCRIPT
                 const res = await fetch(GAS_URL, { 
                     method: 'POST', 
-                    body: JSON.stringify({ action: "delete", id: itemToDelete }) 
+                    body: JSON.stringify({ action: "delete", id: idToDelete }) 
                 });
                 
                 const result = await res.json();
@@ -903,7 +972,17 @@
 
             } catch(e) { 
                 console.error("Terjadi Kesalahan Delete:", e);
-                showToast('Gagal menghapus data dari server', 'error'); 
+                
+                // Fallback to LocalStorage
+                if (inventoryData[idToDelete]) {
+                    delete inventoryData[idToDelete];
+                    localStorage.setItem('inventarisDesaBaleadi', JSON.stringify(inventoryData));
+                    showToast('Data terhapus dari Mode Lokal', 'warning');
+                    filterDataToTable();
+                    updateStats();
+                } else {
+                    showToast('Gagal menghapus data', 'error');
+                }
             }
         });
 
