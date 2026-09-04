@@ -56,12 +56,25 @@
                 margin: 0 !important;
             }
             
-            #data-section, #detail-section { 
+            #data-section, #detail-section, #public-section { 
                 display: block !important; 
                 box-shadow: none !important; 
                 padding: 0 !important; 
                 margin: 0 !important; 
                 width: 100% !important; 
+                max-width: 100% !important;
+            }
+
+            body.printing-modal #public-section > div:not(#public-detail-modal) {
+                display: none !important;
+            }
+            body.printing-modal #public-detail-modal {
+                position: static !important; display: block !important;
+                background: white !important; padding: 0 !important; inset: auto !important; 
+                height: auto !important; overflow: visible !important;
+            }
+            body.printing-modal #public-detail-modal > div {
+                transform: none !important; margin: 0 !important; box-shadow: none !important; border: none !important;
                 max-width: 100% !important;
             }
             
@@ -130,15 +143,19 @@
         </div>
     </div>
 
-    <!-- Halaman Login -->
-    <div id="login-section" class="fixed inset-0 bg-emerald-900 z-50 flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 animate-fade-in">
-            <div class="text-center mb-8">
+    <!-- Halaman Login (Sekarang Berupa Modal Overlay) -->
+    <div id="login-section" class="fixed inset-0 bg-emerald-900/95 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 animate-fade-in relative">
+            <button onclick="hideLoginModal()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors text-2xl w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 hover:bg-red-50">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="text-center mb-8 mt-2">
                 <div class="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-emerald-100">
                     <i class="fas fa-leaf text-4xl text-emerald-600"></i>
                 </div>
-                <h1 class="text-2xl font-extrabold text-gray-800 tracking-tight">Inventaris Baleadi</h1>
-                <p class="text-sm text-gray-500 mt-2 font-medium">Portal Manajemen Aset Desa (KIB)</p>
+                <h1 class="text-2xl font-extrabold text-gray-800 tracking-tight">Otorisasi Admin</h1>
+                <p class="text-sm text-gray-500 mt-2 font-medium">Masuk untuk mengelola data Inventaris KIB</p>
             </div>
             
             <div class="mb-6">
@@ -152,11 +169,121 @@
             <button onclick="checkLogin()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-200 transition-all active:scale-95 flex items-center justify-center gap-2">
                 <i class="fas fa-sign-in-alt"></i> Masuk Sistem
             </button>
+
             <p class="text-center text-xs text-gray-400 mt-6 font-medium">&copy; 2026 Pemerintah Desa Baleadi</p>
         </div>
     </div>
 
-    <!-- Container Utama Aplikasi -->
+    <!-- PORTAL PUBLIK (PENCARIAN ASET) - SEKARANG HALAMAN UTAMA (TIDAK HIDDEN) -->
+    <div id="public-section" class="fixed inset-0 z-[60] bg-gray-50 flex flex-col overflow-hidden">
+        
+        <!-- Header / Hero Section -->
+        <div class="bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 pt-10 pb-12 px-4 relative flex-shrink-0 shadow-lg z-30">
+            <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none"></div>
+            
+            <!-- Tombol Login Admin Pojok Kanan Atas -->
+            <button onclick="showLoginModal()" class="absolute top-4 right-4 bg-white/20 hover:bg-white/30 text-white border border-white/30 px-5 py-2.5 rounded-xl transition-all z-10 flex items-center gap-2 font-bold text-sm shadow-sm backdrop-blur-md">
+                <i class="fas fa-lock"></i> <span class="hidden sm:inline">Login Admin</span>
+            </button>
+            
+            <!-- Identitas Kiri Atas -->
+            <div class="absolute top-4 left-4 text-white/90 z-10 flex items-center gap-2 font-bold text-sm">
+                <i class="fas fa-leaf text-emerald-400"></i> <span class="tracking-wide">DESA BALEADI</span>
+            </div>
+            
+            <div class="max-w-4xl mx-auto text-center relative z-10 mt-6">
+                <div class="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-5 backdrop-blur-md border border-white/20 shadow-inner">
+                    <i class="fas fa-search-location text-4xl text-emerald-300 drop-shadow-md"></i>
+                </div>
+                <h1 class="text-3xl md:text-5xl font-black text-white tracking-tight mb-4 drop-shadow-lg">Transparansi Aset Desa</h1>
+                <p class="text-emerald-100/90 text-sm md:text-base font-medium max-w-xl mx-auto drop-shadow">Portal pencarian publik untuk informasi Kartu Inventaris Barang (KIB) Pemerintah Desa Baleadi.</p>
+                
+                <!-- Search Bar -->
+                <div class="mt-10 max-w-2xl mx-auto relative group">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-gray-400 text-xl group-focus-within:text-emerald-500 transition-colors"></i>
+                    </div>
+                    <input type="text" id="public-search-input" onkeyup="searchPublicData()" class="block w-full pl-12 pr-4 py-4 md:py-5 border-0 rounded-2xl bg-white shadow-2xl focus:ring-4 focus:ring-emerald-400/50 text-gray-800 font-medium placeholder-gray-400 transition-all text-base md:text-lg" placeholder="Cari nama pengguna, nama tanah, alamat...">
+                </div>
+            </div>
+        </div>
+
+        <!-- Hasil Pencarian Area -->
+        <div class="flex-1 overflow-y-auto px-4 py-8 relative z-20 bg-gray-50">
+            <div class="max-w-5xl mx-auto">
+                <div id="public-loading" class="bg-white rounded-2xl shadow-md p-12 text-center border border-gray-100">
+                    <i class="fas fa-circle-notch fa-spin text-4xl text-emerald-500 mb-4"></i>
+                    <h3 class="text-lg font-bold text-gray-800">Menghubungkan ke Database...</h3>
+                    <p class="text-gray-500 text-sm">Harap tunggu sebentar.</p>
+                </div>
+
+                <div id="public-empty" class="hidden bg-white rounded-2xl shadow-md p-12 text-center border border-gray-100">
+                    <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
+                        <i class="fas fa-folder-open text-3xl text-gray-300"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-800">Tidak Ada Data Ditemukan</h3>
+                    <p class="text-gray-500 text-sm mt-1">Gunakan kata kunci lain atau periksa kembali ejaan Anda.</p>
+                </div>
+
+                <div id="public-table-container" class="hidden bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+                    <div class="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                        <h3 class="font-bold text-gray-800 text-sm tracking-wide uppercase">Hasil Pencarian KIB Publik</h3>
+                        <span id="public-count" class="bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full">0 Data</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-gray-600">
+                            <thead class="bg-gray-100/50 border-b border-gray-200 text-gray-800 text-[10px] uppercase font-bold tracking-wider">
+                                <tr>
+                                    <th class="p-4">Kategori</th>
+                                    <th class="p-4">Informasi Aset / Identitas</th>
+                                    <th class="p-4">Lokasi & Keterangan</th>
+                                    <th class="p-4 text-center">Detail</th>
+                                </tr>
+                            </thead>
+                            <tbody id="public-table-body" class="divide-y divide-gray-100">
+                                <!-- Data akan di-render di sini via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Detail Publik (Untuk Print) -->
+        <div id="public-detail-modal" class="custom-modal fixed inset-0 bg-black/80 z-[1000] hidden flex items-center justify-center p-2 sm:p-4 backdrop-blur-sm overflow-y-auto pt-20 pb-4">
+            <div class="bg-white rounded-2xl max-w-4xl w-full shadow-2xl relative animate-fade-in my-auto border border-gray-200">
+                <div class="sticky top-0 bg-white/90 backdrop-blur-md p-4 flex justify-between items-center border-b border-gray-200 rounded-t-2xl z-10 shadow-sm">
+                    <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-info-circle text-emerald-600"></i> Informasi Detail Aset</h3>
+                    <div class="flex gap-2">
+                        <button onclick="closePublicDetail()" class="bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-500 w-9 h-9 rounded-lg flex items-center justify-center transition-colors" title="Tutup"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div class="p-6 md:p-8">
+                    <!-- Area Tampil Detail (Publik) -->
+                    <div id="public-print-area" class="text-gray-900 bg-white space-y-3">
+                        <div class="text-center mb-4 border-b-2 border-gray-800 pb-3">
+                            <h2 class="text-lg font-bold uppercase tracking-widest">Pemerintah Desa Baleadi</h2>
+                            <h1 id="public-det-title" class="text-xl font-black uppercase mt-0.5">Kartu Inventaris Barang (KIB)</h1>
+                            <p class="text-xs font-medium mt-0.5">Dokumen Publik (Transparansi)</p>
+                        </div>
+                        
+                        <div id="public-detail-content" class="space-y-3">
+                            <!-- Konten detail digenerate via JS -->
+                        </div>
+
+                        <div class="mt-10 flex justify-end text-center print-break-before-avoid pt-4">
+                            <div class="w-48">
+                                <p class="mb-12 text-xs">Kepala Desa Baleadi,</p>
+                                <p class="font-bold border-b border-gray-800 inline-block px-4 text-xs">......................................</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Container Utama Aplikasi (Portal Admin) -->
     <div id="app-container" class="hidden w-full h-full flex flex-col md:flex-row">
         
         <div id="toast-container"></div>
@@ -186,7 +313,7 @@
             </nav>
             <div class="p-5 border-t border-emerald-700/50 relative z-10">
                 <button onclick="logout()" class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold transition-colors shadow-md">
-                    <i class="fas fa-sign-out-alt"></i> Keluar
+                    <i class="fas fa-sign-out-alt"></i> Keluar Utama
                 </button>
             </div>
         </aside>
@@ -427,12 +554,12 @@
                                                 <option value="Hak Guna Bangunan">Hak Guna Bangunan (HGB)</option>
                                                 <option value="Hak Pakai">Hak Pakai</option>
                                                 <option value="Girik/Letter C">Girik / Letter C</option>
-                                                <option value="Tanah Negara">Tanah Negara</option>
+                                                <option value="Tanah Negara">SPPT</option>
                                             </select>
                                         </div>
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                             <div>
-                                                <label class="block text-sm font-bold text-gray-700 mb-1.5">Nomor Sertifikat/Girik</label>
+                                                <label class="block text-sm font-bold text-gray-700 mb-1.5">Nomor Bukti</label>
                                                 <input type="text" id="t-nosertifikat" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all font-medium" placeholder="Nomor dokumen...">
                                             </div>
                                             <div>
@@ -939,7 +1066,7 @@
                     </div>
                 </div>
 
-                <!-- DETAIL INDIVIDU SECTION (Untuk Cetak 1 Aset) -->
+                <!-- DETAIL INDIVIDU SECTION (Untuk Cetak 1 Aset Admin) -->
                 <div id="detail-section" class="section-container hidden animate-fade-in bg-white p-4 md:p-8 rounded-2xl shadow-sm border border-gray-200 max-w-4xl mx-auto">
                     
                     <div class="flex justify-between items-center mb-6 border-b pb-4 no-print">
@@ -995,7 +1122,7 @@
     </div>
 
     <script>
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzRwyIar1NrWUD4FXyGSB3sbwdkrcZxJ2-MST_KgfHuxsVxFxKxAp4IpyUe57JWl1lc/exec'; 
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzFkkogmQamx05c3xqxwAstebQDLE_U_DWwQDIE_pIUkIz9O3wQpLZX75zIki-rypg2iw/exec'; 
         
         let inventoryData = {}; 
         let currentLaporanCategory = 'Semua';
@@ -1011,10 +1138,22 @@
             );
         }
 
+        // --- FUNGSI PORTAL PUBLIK & LOGIN ALUR BARU ---
+        function showLoginModal() {
+            document.getElementById('login-section').classList.remove('hidden');
+            setTimeout(() => document.getElementById('pin-input').focus(), 100);
+        }
+
+        function hideLoginModal() {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('pin-input').value = '';
+        }
+
         function checkLogin() {
             if (document.getElementById('pin-input').value === '789') {
                 sessionStorage.setItem('isLoggedIn', 'true');
                 document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('public-section').classList.add('hidden');
                 document.getElementById('app-container').classList.remove('hidden');
                 showToast('Otentikasi Berhasil', 'success');
                 switchTab('dashboard');
@@ -1026,6 +1165,125 @@
         }
         function logout() { sessionStorage.removeItem('isLoggedIn'); location.reload(); }
 
+        async function initPublicPortal() {
+            if (Object.keys(inventoryData).length === 0) {
+                document.getElementById('public-loading').classList.remove('hidden');
+                document.getElementById('public-table-container').classList.add('hidden');
+                document.getElementById('public-empty').classList.add('hidden');
+                
+                if(GAS_URL.startsWith('http')) {
+                    try {
+                        const res = await fetch(`${GAS_URL}?action=read`);
+                        const result = await res.json();
+                        if(result.status === 'success') inventoryData = result.data || {};
+                    } catch (err) { console.error("Gagal memuat data publik"); }
+                }
+            }
+            searchPublicData();
+        }
+
+        function searchPublicData() {
+            const searchTerm = document.getElementById('public-search-input').value.toLowerCase();
+            const tbody = document.getElementById('public-table-body');
+            tbody.innerHTML = '';
+            
+            document.getElementById('public-loading').classList.add('hidden');
+            
+            if(!searchTerm || searchTerm.length < 2) {
+                document.getElementById('public-empty').classList.add('hidden');
+                document.getElementById('public-table-container').classList.add('hidden');
+                return;
+            }
+
+            let count = 0;
+            const keys = Object.keys(inventoryData).reverse();
+
+            keys.forEach(key => {
+                const item = inventoryData[key];
+                const str = JSON.stringify(item).toLowerCase();
+                
+                if (str.includes(searchTerm)) {
+                    count++;
+                    const formatUang = (n) => n ? new Intl.NumberFormat('id-ID').format(n) : '-';
+                    const badge = (item.kategori === 'Lahan') ? 'bg-emerald-100 text-emerald-700' : (item.kategori === 'Bangunan') ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700';
+                    
+                    let rowHtml = '';
+                    if(item.kategori === 'Lahan') {
+                        rowHtml = `
+                            <td class="p-4 align-top"><span class="px-3 py-1 rounded-full text-[10px] font-bold border ${badge} border-current/20 whitespace-nowrap"><i class="fas fa-map mr-1"></i> Tanah</span></td>
+                            <td class="p-4 align-top cursor-pointer hover:bg-emerald-50 transition-colors group" onclick="openPublicDetail('${key}')" title="Klik untuk lihat Detail KIB">
+                                <div class="font-black text-gray-900 text-lg uppercase tracking-wider mb-1 group-hover:text-emerald-600 transition-colors flex items-center">
+                                    <i class="fas fa-user-tag text-emerald-500 text-sm mr-2"></i> ${escapeHTML(item.hakPengguna || 'TANPA PENGGUNA')}
+                                </div>
+                                <div class="font-bold text-gray-600 text-sm mb-1">${escapeHTML(item.nama)}</div>
+                                <div class="text-[10px] text-gray-400">Kode: ${escapeHTML(item.kodeBarang)} | Reg: ${escapeHTML(item.register)}</div>
+                            </td>
+                            <td class="p-4 align-top text-xs text-gray-600">
+                                <div><i class="fas fa-map-marker-alt text-emerald-500 w-4"></i> ${escapeHTML(item.alamatLokasi)}</div>
+                                <div class="mt-1"><i class="fas fa-ruler-combined text-emerald-500 w-4"></i> Luas: <span class="font-bold">${escapeHTML(item.luasSekarang || item.luas)}</span> m²</div>
+                            </td>
+                            <td class="p-4 align-top text-center">
+                                <button onclick="openPublicDetail('${key}')" class="text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-lg transition-colors border border-emerald-200 shadow-sm text-xs font-bold whitespace-nowrap">
+                                    <i class="fas fa-eye mr-1"></i> Lihat KIB
+                                </button>
+                            </td>
+                        `;
+                    } else if (item.kategori === 'Bangunan') {
+                        rowHtml = `
+                            <td class="p-4 align-top"><span class="px-3 py-1 rounded-full text-[10px] font-bold border ${badge} border-current/20 whitespace-nowrap"><i class="fas fa-building mr-1"></i> Gedung</span></td>
+                            <td class="p-4 align-top cursor-pointer hover:bg-blue-50 transition-colors" onclick="openPublicDetail('${key}')" title="Klik untuk lihat Detail KIB">
+                                <div class="font-bold text-gray-900 text-base mb-1 hover:text-blue-600 transition-colors">${escapeHTML(item.nama)}</div>
+                                <div class="text-[10px] text-gray-400">Kode: ${escapeHTML(item.kodeBarang)} | Reg: ${escapeHTML(item.register)}</div>
+                            </td>
+                            <td class="p-4 align-top text-xs text-gray-600">
+                                <div><i class="fas fa-map-marker-alt text-blue-500 w-4"></i> ${escapeHTML(item.alamat)}</div>
+                                <div class="mt-1"><i class="fas fa-check-circle text-blue-500 w-4"></i> Kondisi: <span class="font-bold">${escapeHTML(item.kondisi)}</span></div>
+                            </td>
+                            <td class="p-4 align-top text-center">
+                                <button onclick="openPublicDetail('${key}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg transition-colors border border-blue-200 shadow-sm text-xs font-bold whitespace-nowrap">
+                                    <i class="fas fa-eye mr-1"></i> Lihat KIB
+                                </button>
+                            </td>
+                        `;
+                    } else {
+                        rowHtml = `
+                            <td class="p-4 align-top"><span class="px-3 py-1 rounded-full text-[10px] font-bold border ${badge} border-current/20 whitespace-nowrap"><i class="fas fa-cogs mr-1"></i> Alat/Mesin</span></td>
+                            <td class="p-4 align-top cursor-pointer hover:bg-amber-50 transition-colors" onclick="openPublicDetail('${key}')" title="Klik untuk lihat Detail KIB">
+                                <div class="font-bold text-gray-900 text-base mb-1 hover:text-amber-600 transition-colors">${escapeHTML(item.nama)}</div>
+                                <div class="text-xs text-gray-500 mb-1">Merk: <span class="font-bold text-gray-700">${escapeHTML(item.merk)}</span></div>
+                                <div class="text-[10px] text-gray-400">Kode: ${escapeHTML(item.kodeBarang)} | Reg: ${escapeHTML(item.register)}</div>
+                            </td>
+                            <td class="p-4 align-top text-xs text-gray-600">
+                                <div><i class="fas fa-map-pin text-amber-500 w-4"></i> ${escapeHTML(item.lokasi)}</div>
+                                <div class="mt-1"><i class="fas fa-calendar-alt text-amber-500 w-4"></i> Tahun: <span class="font-bold">${escapeHTML(item.tahunPerolehan || item.tahunBuat || item.tahunBeli)}</span></div>
+                            </td>
+                            <td class="p-4 align-top text-center">
+                                <button onclick="openPublicDetail('${key}')" class="text-amber-600 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 px-3 py-2 rounded-lg transition-colors border border-amber-200 shadow-sm text-xs font-bold whitespace-nowrap">
+                                    <i class="fas fa-eye mr-1"></i> Lihat KIB
+                                </button>
+                            </td>
+                        `;
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-gray-50 border-b border-gray-100 transition-colors";
+                    tr.innerHTML = rowHtml;
+                    tbody.appendChild(tr);
+                }
+            });
+
+            document.getElementById('public-count').innerText = `${count} Data`;
+
+            if (count === 0) {
+                document.getElementById('public-empty').classList.remove('hidden');
+                document.getElementById('public-table-container').classList.add('hidden');
+            } else {
+                document.getElementById('public-empty').classList.add('hidden');
+                document.getElementById('public-table-container').classList.remove('hidden');
+            }
+        }
+
+        // --- FUNGSI ADMIN REGULER ---
         function switchTab(tabId) {
             document.querySelectorAll('.section-container').forEach(el => el.classList.add('hidden'));
             document.getElementById(tabId + '-section').classList.remove('hidden');
@@ -1050,7 +1308,6 @@
             document.querySelectorAll('.section-container').forEach(el => el.classList.add('hidden'));
             document.getElementById('form-' + type + '-section').classList.remove('hidden');
 
-            // Ambil data langsung dari global memory jika tidak di-pass dari parameter
             if (!editData && editId && inventoryData[editId]) {
                 editData = inventoryData[editId];
             }
@@ -1462,13 +1719,13 @@
             const keys = Object.keys(data);
             
             if (currentLaporanCategory === 'Semua') {
-                thead.innerHTML = `<tr><th class="p-3">No</th><th class="p-3">Kategori</th><th class="p-3">Nama Aset</th><th class="p-3">Kode/Register</th><th class="p-3">Kondisi</th><th class="p-3">Thn Perolehan</th><th class="p-3 text-right">Nilai/Harga (Rp)</th><th class="p-3 text-center no-print">Aksi</th></tr>`;
+                thead.innerHTML = `<tr><th class="p-3">No</th><th class="p-3">Kategori</th><th class="p-3">Identitas Aset</th><th class="p-3">Kode/Register</th><th class="p-3">Kondisi</th><th class="p-3">Thn Perolehan</th><th class="p-3 text-right">Nilai/Harga (Rp)</th><th class="p-3 text-center no-print">Aksi</th></tr>`;
             } else if (currentLaporanCategory === 'Lahan') {
-                thead.innerHTML = `<tr><th class="p-3">No</th><th class="p-3">Nama, Jenis & Lokasi</th><th class="p-3">Kode/Reg</th><th class="p-3">Luas(m²)</th><th class="p-3">Status/Sertifikat</th><th class="p-3">Penggunaan</th><th class="p-3">Asal Usul & Thn</th><th class="p-3 text-right">Harga (Rp)</th><th class="p-3">Lampiran</th><th class="p-3 text-center no-print">Aksi</th></tr>`;
+                thead.innerHTML = `<tr><th class="p-3">No</th><th class="p-3">Identitas Tanah</th><th class="p-3">Kode/Reg</th><th class="p-3">Luas(m²)</th><th class="p-3">Status/Sertifikat</th><th class="p-3">Penggunaan</th><th class="p-3">Asal Usul & Thn</th><th class="p-3 text-right">Harga (Rp)</th><th class="p-3">Lampiran</th><th class="p-3 text-center no-print">Aksi</th></tr>`;
             } else if (currentLaporanCategory === 'Bangunan') {
-                thead.innerHTML = `<tr><th class="p-3">No</th><th class="p-3">Nama Bangunan</th><th class="p-3">Kode/Reg</th><th class="p-3">Kondisi & Konstruksi</th><th class="p-3">Luas & Lantai</th><th class="p-3">Alamat</th><th class="p-3">IMB & Tgl</th><th class="p-3">Asal Usul & Thn</th><th class="p-3 text-right">Nilai (Rp)</th><th class="p-3">Ket (Foto/GPS)</th><th class="p-3 text-center no-print">Aksi</th></tr>`;
+                thead.innerHTML = `<tr><th class="p-3">No</th><th class="p-3">Identitas Bangunan</th><th class="p-3">Kode/Reg</th><th class="p-3">Kondisi & Konstruksi</th><th class="p-3">Luas & Lantai</th><th class="p-3">Alamat</th><th class="p-3">IMB & Tgl</th><th class="p-3">Asal Usul & Thn</th><th class="p-3 text-right">Nilai (Rp)</th><th class="p-3">Ket (Foto/GPS)</th><th class="p-3 text-center no-print">Aksi</th></tr>`;
             } else if (currentLaporanCategory === 'Peralatan') {
-                thead.innerHTML = `<tr><th class="p-3">No</th><th class="p-3">Nama Barang</th><th class="p-3">Kode/Reg</th><th class="p-3">Merk/Tipe</th><th class="p-3">Bahan/Warna/Ukr</th><th class="p-3">No. Pabrik/Rangka/Msn</th><th class="p-3">Asal Usul & Thn</th><th class="p-3 text-right">Harga (Rp)</th><th class="p-3">Kondisi & Lokasi</th><th class="p-3 text-center no-print">Aksi</th></tr>`;
+                thead.innerHTML = `<tr><th class="p-3">No</th><th class="p-3">Identitas Barang</th><th class="p-3">Kode/Reg</th><th class="p-3">Merk/Tipe</th><th class="p-3">Bahan/Warna/Ukr</th><th class="p-3">No. Pabrik/Rangka/Msn</th><th class="p-3">Asal Usul & Thn</th><th class="p-3 text-right">Harga (Rp)</th><th class="p-3">Kondisi & Lokasi</th><th class="p-3 text-center no-print">Aksi</th></tr>`;
             }
 
             if(keys.length === 0) { 
@@ -1483,7 +1740,12 @@
                 if (currentLaporanCategory === 'Semua') {
                     const badge = (item.kategori === 'Lahan') ? 'bg-emerald-100 text-emerald-700' : (item.kategori === 'Bangunan') ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700';
                     const harga = item.kategori === 'Bangunan' ? item.nilai : item.harga;
-                    rowHtml = `<td class="p-3">${counter++}</td><td class="p-3"><span class="px-2 py-1 rounded text-[10px] font-bold ${badge}">${item.kategori}</span></td><td class="p-3 font-bold text-gray-900">${escapeHTML(item.nama)}</td><td class="p-3">${escapeHTML(item.kodeBarang)}<br>R: ${escapeHTML(item.register)}</td><td class="p-3">${escapeHTML(item.kondisi)}</td><td class="p-3">${escapeHTML(item.tahunPerolehan || item.tahunBuat || item.tahunBeli)}</td><td class="p-3 text-right font-bold">${formatUang(harga)}</td>`;
+                    
+                    let idnAset = `<div class="cursor-pointer hover:text-emerald-600 transition-colors" onclick="openDetail('${key}')" title="Klik untuk lihat Detail & Cetak KIB">`;
+                    if(item.kategori === 'Lahan' && item.hakPengguna) idnAset += `<span class="font-bold text-gray-800 uppercase block text-[10px] bg-gray-100 px-1 py-0.5 rounded border border-gray-200 w-max mb-1">${escapeHTML(item.hakPengguna)}</span>`;
+                    idnAset += `<span class="font-bold text-gray-900">${escapeHTML(item.nama)}</span></div>`;
+                    
+                    rowHtml = `<td class="p-3">${counter++}</td><td class="p-3"><span class="px-2 py-1 rounded text-[10px] font-bold ${badge}">${item.kategori}</span></td><td class="p-3">${idnAset}</td><td class="p-3">${escapeHTML(item.kodeBarang)}<br>R: ${escapeHTML(item.register)}</td><td class="p-3">${escapeHTML(item.kondisi)}</td><td class="p-3">${escapeHTML(item.tahunPerolehan || item.tahunBuat || item.tahunBeli)}</td><td class="p-3 text-right font-bold">${formatUang(harga)}</td>`;
                 } else if (currentLaporanCategory === 'Lahan') {
                     const gps = item.koordinat ? `<a href="https://maps.google.com/?q=${escapeHTML(item.koordinat)}" target="_blank" class="text-blue-500 text-[10px] hover:underline no-print font-bold"><i class="fas fa-map-marker-alt"></i> Buka Peta</a>` : '';
                     let meds = '';
@@ -1494,8 +1756,12 @@
                     if(item.buktiBatas) meds += `<button onclick="viewPhoto('${item.buktiBatas}')" class="text-[10px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded mr-1 mb-1 no-print">Bts</button>`;
                     if(item.buktiSertifikat) meds += `<button onclick="viewPhoto('${item.buktiSertifikat}')" class="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded mr-1 mb-1 no-print border border-yellow-200">Srtf</button>`;
                     
+                    let idnAset = `<div class="cursor-pointer hover:bg-emerald-50 transition-colors p-1 -m-1 rounded" onclick="openDetail('${key}')" title="Klik untuk lihat Detail & Cetak KIB">`;
+                    if(item.hakPengguna) idnAset += `<span class="font-bold text-gray-800 uppercase block text-[11px] bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 w-max mb-1"><i class="fas fa-user-tag text-emerald-600"></i> ${escapeHTML(item.hakPengguna)}</span>`;
+                    idnAset += `<span class="font-bold text-gray-900">${escapeHTML(item.nama)}</span><br><span class="text-[10px] text-gray-500 font-medium">${escapeHTML(item.jenisTanah)}</span><br><span class="text-[10px] text-emerald-600 font-medium mt-0.5 inline-block"><i class="fas fa-map-marker-alt"></i> ${escapeHTML(item.alamatLokasi)}</span></div>`;
+
                     rowHtml = `<td class="p-3">${counter++}</td>
-                               <td class="p-3 font-bold text-gray-900">${escapeHTML(item.nama)}<br><span class="text-[10px] text-gray-800 font-semibold bg-gray-100 px-1.5 py-0.5 rounded mt-1 inline-block border border-gray-200"><i class="fas fa-user-tag text-emerald-600"></i> ${escapeHTML(item.hakPengguna)}</span><br><span class="text-[10px] text-gray-500 font-medium">${escapeHTML(item.jenisTanah)}</span><br><span class="text-[10px] text-emerald-600 font-medium mt-0.5 inline-block"><i class="fas fa-map-marker-alt"></i> ${escapeHTML(item.alamatLokasi)}</span></td>
+                               <td class="p-3">${idnAset}</td>
                                <td class="p-3 font-medium">${escapeHTML(item.kodeBarang)}<br>R: ${escapeHTML(item.register)}</td>
                                <td class="p-3">Awl: ${escapeHTML(item.luas)}<br>Skr: <span class="font-bold text-emerald-600">${escapeHTML(item.luasSekarang)}</span></td>
                                <td class="p-3">${escapeHTML(item.kondisi)}<br><span class="text-[10px] font-bold text-gray-500">${escapeHTML(item.noSertifikat)}</span></td>
@@ -1506,17 +1772,22 @@
                 } else if (currentLaporanCategory === 'Bangunan') {
                     const gpsB = item.koordinat ? `<br><a href="https://maps.google.com/?q=${escapeHTML(item.koordinat)}" target="_blank" class="text-blue-500 text-[10px] hover:underline no-print font-bold"><i class="fas fa-map-marker-alt"></i> Peta</a>` : '';
                     const imgB = item.foto ? `<button onclick="viewPhoto('${item.foto}')" class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded no-print font-bold"><i class="fas fa-image"></i> Foto</button>` : '';
-                    rowHtml = `<td class="p-3">${counter++}</td><td class="p-3 font-bold text-gray-900">${escapeHTML(item.nama)}</td><td class="p-3">${escapeHTML(item.kodeBarang)}<br>R: ${escapeHTML(item.register)}</td><td class="p-3">${escapeHTML(item.kondisi)}<br>${escapeHTML(item.konstruksi)}</td><td class="p-3">${escapeHTML(item.luas)} m²<br>Lt: ${escapeHTML(item.lantai)}</td><td class="p-3">${escapeHTML(item.alamat)}</td><td class="p-3">${escapeHTML(item.noImb)}<br>${escapeHTML(item.tglImb)}</td><td class="p-3">${escapeHTML(item.asalUsul)}<br>Buat: ${escapeHTML(item.tahunBuat)}<br>Beli: ${escapeHTML(item.tahunBeli)}</td><td class="p-3 text-right font-bold">${formatUang(item.nilai)}</td><td class="p-3">${imgB}${gpsB}</td>`;
+                    
+                    let idnAset = `<div class="cursor-pointer hover:text-blue-600 font-bold text-gray-900 transition-colors" onclick="openDetail('${key}')" title="Klik untuk lihat Detail & Cetak KIB">${escapeHTML(item.nama)}</div>`;
+                    
+                    rowHtml = `<td class="p-3">${counter++}</td><td class="p-3">${idnAset}</td><td class="p-3">${escapeHTML(item.kodeBarang)}<br>R: ${escapeHTML(item.register)}</td><td class="p-3">${escapeHTML(item.kondisi)}<br>${escapeHTML(item.konstruksi)}</td><td class="p-3">${escapeHTML(item.luas)} m²<br>Lt: ${escapeHTML(item.lantai)}</td><td class="p-3">${escapeHTML(item.alamat)}</td><td class="p-3">${escapeHTML(item.noImb)}<br>${escapeHTML(item.tglImb)}</td><td class="p-3">${escapeHTML(item.asalUsul)}<br>Buat: ${escapeHTML(item.tahunBuat)}<br>Beli: ${escapeHTML(item.tahunBeli)}</td><td class="p-3 text-right font-bold">${formatUang(item.nilai)}</td><td class="p-3">${imgB}${gpsB}</td>`;
                 } else if (currentLaporanCategory === 'Peralatan') {
                     const imgP = item.foto ? `<button onclick="viewPhoto('${item.foto}')" class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded mt-1 no-print font-bold"><i class="fas fa-image"></i> Foto</button>` : '';
-                    rowHtml = `<td class="p-3">${counter++}</td><td class="p-3 font-bold text-gray-900">${escapeHTML(item.nama)}</td><td class="p-3">${escapeHTML(item.kodeBarang)}<br>R: ${escapeHTML(item.register)}</td><td class="p-3">${escapeHTML(item.merk)}</td><td class="p-3">Bhn: ${escapeHTML(item.bahan)}<br>Wrn: ${escapeHTML(item.warna)}<br>Ukr: ${escapeHTML(item.ukuran)}</td><td class="p-3">Rngk: ${escapeHTML(item.noRangka)}<br>Msn: ${escapeHTML(item.noMesin)}</td><td class="p-3">${escapeHTML(item.asalUsul)}<br>Buat: ${escapeHTML(item.tahunBuat)}<br>Beli: ${escapeHTML(item.tahunBeli)}</td><td class="p-3 text-right font-bold">${formatUang(item.harga)}</td><td class="p-3">${escapeHTML(item.kondisi)}<br>Lok: ${escapeHTML(item.lokasi)}<br>${imgP}</td>`;
+                    
+                    let idnAset = `<div class="cursor-pointer hover:text-amber-600 font-bold text-gray-900 transition-colors" onclick="openDetail('${key}')" title="Klik untuk lihat Detail & Cetak KIB">${escapeHTML(item.nama)}</div>`;
+                    
+                    rowHtml = `<td class="p-3">${counter++}</td><td class="p-3">${idnAset}</td><td class="p-3">${escapeHTML(item.kodeBarang)}<br>R: ${escapeHTML(item.register)}</td><td class="p-3">${escapeHTML(item.merk)}</td><td class="p-3">Bhn: ${escapeHTML(item.bahan)}<br>Wrn: ${escapeHTML(item.warna)}<br>Ukr: ${escapeHTML(item.ukuran)}</td><td class="p-3">Rngk: ${escapeHTML(item.noRangka)}<br>Msn: ${escapeHTML(item.noMesin)}</td><td class="p-3">${escapeHTML(item.asalUsul)}<br>Buat: ${escapeHTML(item.tahunBuat)}<br>Beli: ${escapeHTML(item.tahunBeli)}</td><td class="p-3 text-right font-bold">${formatUang(item.harga)}</td><td class="p-3">${escapeHTML(item.kondisi)}<br>Lok: ${escapeHTML(item.lokasi)}<br>${imgP}</td>`;
                 }
 
                 const editType = item.kategori === 'Lahan' ? 'tanah' : (item.kategori === 'Bangunan' ? 'bangunan' : 'peralatan');
                 
                 const actHtml = `<td class="p-3 text-center no-print whitespace-nowrap">
                     <div class="flex items-center justify-center gap-1">
-                        <button onclick="openDetail('${key}')" class="text-emerald-600 hover:text-emerald-800 p-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200" title="Cetak KIB Individu"><i class="fas fa-file-invoice"></i></button>
                         <button onclick="openForm('${editType}', null, '${key}')" class="text-blue-600 hover:text-blue-800 p-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200" title="Ubah/Edit"><i class="fas fa-edit"></i></button>
                         <button onclick="openDeleteModal('${key}')" class="text-red-500 hover:text-red-700 p-2 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200" title="Hapus"><i class="fas fa-trash-alt"></i></button>
                     </div>
@@ -1528,17 +1799,7 @@
             });
         }
 
-        function openDetail(key) {
-            currentDetailItem = inventoryData[key];
-            if(!currentDetailItem) return;
-            
-            document.querySelectorAll('.section-container').forEach(el => el.classList.add('hidden'));
-            document.getElementById('detail-section').classList.remove('hidden');
-            
-            const item = currentDetailItem;
-            document.getElementById('det-title').innerText = `Kartu Inventaris Barang (KIB ${item.kategori === 'Lahan' ? 'A - Tanah' : (item.kategori === 'Bangunan' ? 'C - Gedung & Bangunan' : 'B - Peralatan & Mesin')})`;
-            
-            const content = document.getElementById('detail-content');
+        function generateKIBDetailHTML(item) {
             let sections = '';
             
             const renderBlock = (title, dataArray) => {
@@ -1547,9 +1808,12 @@
                             <div class="flex flex-col">`;
                 dataArray.forEach(row => {
                     const displayValue = row.isHtml ? row.value : escapeHTML(row.value);
+                    const labelClass = row.boldLabel ? "detail-label p-2 font-black text-gray-900 w-1/3 border-r border-gray-200 bg-gray-100 uppercase" : "detail-label p-2 text-gray-700 font-semibold w-1/3 border-r border-gray-200 bg-gray-50";
+                    const valueClass = row.boldValue ? "detail-value p-2 text-gray-900 w-2/3 break-words font-bold uppercase" : "detail-value p-2 text-gray-900 w-2/3 break-words";
+                    
                     html += `<div class="detail-row flex w-full text-xs border-b border-gray-200 last:border-b-0">
-                                <div class="detail-label p-2 text-gray-700 font-semibold w-1/3 border-r border-gray-200 bg-gray-50">${row.label}</div>
-                                <div class="detail-value p-2 text-gray-900 w-2/3 break-words">${displayValue}</div>
+                                <div class="${labelClass}">${row.label}</div>
+                                <div class="${valueClass}">${displayValue}</div>
                              </div>`;
                 });
                 html += `</div></div>`;
@@ -1579,7 +1843,7 @@
             
             if(item.kategori === 'Lahan') {
                 sections += renderBlock('1. Identitas Aset', [
-                    { label: 'Nama Hak Pengguna', value: item.hakPengguna },
+                    { label: 'Nama Hak Pengguna', value: item.hakPengguna, boldLabel: true, boldValue: true },
                     { label: 'Nama Tanah', value: item.nama },
                     { label: 'Jenis Tanah', value: item.jenisTanah },
                     { label: 'Alamat / Lokasi', value: item.alamatLokasi },
@@ -1680,7 +1944,33 @@
                                  </div>`;
                 }
             }
-            content.innerHTML = sections;
+            return sections;
+        }
+
+        function openDetail(key) {
+            currentDetailItem = inventoryData[key];
+            if(!currentDetailItem) return;
+            
+            document.querySelectorAll('.section-container').forEach(el => el.classList.add('hidden'));
+            document.getElementById('detail-section').classList.remove('hidden');
+            
+            const item = currentDetailItem;
+            document.getElementById('det-title').innerText = `Kartu Inventaris Barang (KIB ${item.kategori === 'Lahan' ? 'A - Tanah' : (item.kategori === 'Bangunan' ? 'C - Gedung & Bangunan' : 'B - Peralatan & Mesin')})`;
+            
+            document.getElementById('detail-content').innerHTML = generateKIBDetailHTML(item);
+        }
+
+        function openPublicDetail(key) {
+            const item = inventoryData[key];
+            if(!item) return;
+
+            document.getElementById('public-det-title').innerText = `Kartu Inventaris Barang (KIB ${item.kategori === 'Lahan' ? 'A - Tanah' : (item.kategori === 'Bangunan' ? 'C - Gedung & Bangunan' : 'B - Peralatan & Mesin')})`;
+            document.getElementById('public-detail-content').innerHTML = generateKIBDetailHTML(item);
+            document.getElementById('public-detail-modal').classList.remove('hidden');
+        }
+
+        function closePublicDetail() {
+            document.getElementById('public-detail-modal').classList.add('hidden');
         }
 
         function openDeleteModal(id) {
@@ -1731,7 +2021,7 @@
 
                 if (currentLaporanCategory === 'Semua') {
                     exportData.push({
-                        "No": counter++, "Kategori": item.kategori, "Nama Aset": item.nama, "Kode Barang": item.kodeBarang,
+                        "No": counter++, "Kategori": item.kategori, "Nama Hak Pengguna": item.hakPengguna || "-", "Nama Aset": item.nama, "Kode Barang": item.kodeBarang,
                         "Register": item.register, "Kondisi": item.kondisi, "Tahun Perolehan": item.tahunPerolehan || item.tahunBuat || item.tahunBeli,
                         "Nilai/Harga (Rp)": Number(item.kategori === 'Bangunan' ? item.nilai : item.harga) || 0
                     });
@@ -1772,8 +2062,12 @@
         window.onload = function() {
             if(sessionStorage.getItem('isLoggedIn') === 'true') {
                 document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('public-section').classList.add('hidden');
                 document.getElementById('app-container').classList.remove('hidden');
-                switchTab('dashboard'); fetchData();
+                switchTab('dashboard'); 
+                fetchData();
+            } else {
+                initPublicPortal(); // Otomatis memuat data ke menu publik saat baru dibuka
             }
         }
     </script>
